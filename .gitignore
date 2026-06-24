@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.runtime/
+server/
+logs/
+backups/
+*.log
+*.pid
+*.lock
+*.tmp
+*.zip
+*.tar.gz
+*.jar
+__pycache__/
+*.pyc
+node_modules/

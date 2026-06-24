@@ -1,0 +1,20 @@
+# Minimal Minecraft Java server.properties example.
+# Copy to server/server.properties after downloading your server jar.
+
+server-port=25565
+server-ip=
+motd=UNMC Java Server Stack
+max-players=20
+gamemode=survival
+difficulty=normal
+online-mode=true
+enable-status=true
+hide-online-players=false
+view-distance=10
+simulation-distance=10
+spawn-protection=16
+pvp=true
+allow-flight=false
+white-list=false
+enforce-whitelist=false
+force-gamemode=false

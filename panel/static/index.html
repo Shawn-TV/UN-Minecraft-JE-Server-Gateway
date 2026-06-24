@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UN 服务器控制台</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="/static/assets/un-logo.png" alt="United Nations 我的世界服务器">
+        <div class="brand-copy">
+          <h1>United Nations 我的世界服务器</h1>
+          <p id="subtitle">Java 生存服 · Mac mini 控制台</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="lastUpdated" class="last-updated">--</span>
+        <a class="site-link" href="https://unmcserver.com/" target="_blank" rel="noreferrer">unmcserver.com</a>
+        <button id="editLayoutBtn" class="toolbar-button" type="button" hidden>编辑布局</button>
+        <button id="openLibraryBtn" class="toolbar-button" type="button" hidden>组件库</button>
+        <button id="resetLayoutBtn" class="toolbar-button ghost" type="button" hidden>重置</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <nav id="viewSwitcher" class="view-switcher" aria-label="面板视图"></nav>
+
+      <section class="edit-strip" id="editStrip" hidden>
+        <strong>编辑中</strong>
+        <span>拖标题栏移动，拖四角缩放；位置会吸附到网格，尺寸只会落在已经校准过的组件档位。</span>
+      </section>
+
+      <section id="dashboard" class="dashboard" aria-label="UN 服务器控制台组件"></section>
+    </main>
+
+    <aside id="libraryDrawer" class="library-drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <div>
+          <h2>组件库</h2>
+          <span id="libraryCount">--</span>
+        </div>
+        <button id="closeLibraryBtn" class="icon-button" type="button" title="关闭">×</button>
+      </div>
+      <div id="libraryList" class="library-list"></div>
+    </aside>
+    <div id="drawerScrim" class="drawer-scrim" hidden></div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
