@@ -2,7 +2,6 @@
 set -u
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT_DIR/scripts/load-env.sh"
 LOG_DIR="$ROOT_DIR/logs"
 LOG_FILE="$LOG_DIR/one-click-start.log"
 PANEL_URL="${PANEL_URL:-http://127.0.0.1:8765}"
@@ -19,10 +18,10 @@ status=0
 
 if [[ "$status" -eq 0 ]]; then
   /usr/bin/open "$PANEL_URL" >> "$LOG_FILE" 2>&1 || true
-  /usr/bin/osascript -e 'display notification "Java server, tunnel, and panel are running." with title "UN-Minecraft-JE-Server-Gateway"' >/dev/null 2>&1 || true
+  /usr/bin/osascript -e 'display notification "JE、内网穿透和面板已经启动。" with title "Minecraft 控制面板"' >/dev/null 2>&1 || true
 else
   /usr/bin/open "$LOG_FILE" >/dev/null 2>&1 || true
-  /usr/bin/osascript -e 'display notification "Startup hit an error. The log has been opened." with title "UN-Minecraft-JE-Server-Gateway"' >/dev/null 2>&1 || true
+  /usr/bin/osascript -e 'display notification "启动时遇到问题，已打开日志。" with title "Minecraft 控制面板"' >/dev/null 2>&1 || true
 fi
 
 {

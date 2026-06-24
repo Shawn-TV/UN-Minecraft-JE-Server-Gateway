@@ -16,25 +16,6 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
-ENV_FILE = ROOT / ".env"
-
-
-def load_env_file(path: Path) -> None:
-    if not path.exists():
-        return
-    for raw in path.read_text(errors="replace").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key and key not in os.environ:
-            os.environ[key] = value
-
-
-load_env_file(ENV_FILE)
-
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 SERVER_LOG = ROOT / "server" / "logs" / "latest.log"
 TUNNEL_LOG = ROOT / "logs" / "tunnel-loop.log"
@@ -42,18 +23,6 @@ BACKUP_DIR = ROOT / "backups" / "world"
 BACKUP_CONFIG = ROOT / "panel" / "backup-config.json"
 HOST = os.environ.get("PANEL_HOST", "127.0.0.1")
 PORT = int(os.environ.get("PANEL_PORT", "8765"))
-MC_PORT = int(os.environ.get("MC_PORT", "25565"))
-MC_LOCAL_HOST = os.environ.get("MC_LOCAL_HOST", "127.0.0.1")
-MC_ENTRY_HOSTS = [
-    host.strip()
-    for host in os.environ.get("MC_ENTRY_HOSTS", "play.example.com,la.play.example.com").split(",")
-    if host.strip()
-]
-SERVER_JAR_PATTERN = os.environ.get("SERVER_JAR_PATTERN", "*.jar")
-SCREEN_PREFIX = os.environ.get("SCREEN_PREFIX", "unmc")
-SERVER_SCREEN_NAME = os.environ.get("SERVER_SCREEN_NAME", f"{SCREEN_PREFIX}-je")
-TUNNEL_SCREEN_NAME = os.environ.get("TUNNEL_SCREEN_NAME", f"{SCREEN_PREFIX}-tunnel")
-PANEL_SCREEN_NAME = os.environ.get("PANEL_SCREEN_NAME", f"{SCREEN_PREFIX}-panel")
 SLOW_STATS_CACHE = {"at": 0.0, "data": {}}
 BACKUP_RUN_LOCK = threading.Lock()
 BACKUP_STATE_LOCK = threading.Lock()
@@ -160,7 +129,7 @@ def parse_screen_sessions(output: str) -> dict:
     sessions = {}
     for line in output.splitlines():
         line = line.strip()
-        if f".{SCREEN_PREFIX}-" not in line:
+        if ".unmc-" not in line:
             continue
         first = line.split()[0]
         if "." not in first:
@@ -177,11 +146,10 @@ def process_snapshot() -> dict:
     tunnel = []
     tunnel_loop = []
     panel = []
-    server_dir_marker = str(ROOT / "server")
     for line in ps["stdout"].splitlines():
-        if " -jar " in line and server_dir_marker in line:
+        if "purpur-26.1.2-2585.jar" in line:
             java.append(line.strip())
-        if "/usr/bin/ssh" in line and " -NT " in line and " -R " in line and f":{MC_PORT}" in line:
+        if "0.0.0.0:43027:127.0.0.1:43027" in line and "/usr/bin/ssh -NT" in line:
             tunnel.append(line.strip())
         if "/scripts/tunnel-loop.sh" in line and not line.strip().startswith("rg "):
             tunnel_loop.append(line.strip())
@@ -329,7 +297,7 @@ def description_text(value) -> str:
     return ""
 
 
-def minecraft_status(host: str, port: int = MC_PORT, timeout: float = 2.5) -> dict:
+def minecraft_status(host: str, port: int = 43027, timeout: float = 2.5) -> dict:
     started = time.time()
     try:
         with socket.create_connection((host, port), timeout=timeout) as sock:
@@ -666,7 +634,7 @@ def find_count(args: list[str], timeout: float = 6) -> int:
 
 
 def connection_summary() -> dict:
-    result = run_cmd(["lsof", "-nP", f"-iTCP:{MC_PORT}"], timeout=4)
+    result = run_cmd(["lsof", "-nP", "-iTCP:43027"], timeout=4)
     established = [line.strip() for line in result["stdout"].splitlines() if "(ESTABLISHED)" in line]
     return {"established": len(established), "raw": result["stdout"]}
 
@@ -939,20 +907,8 @@ def slow_stats() -> dict:
 
 
 def local_listen() -> dict:
-    result = run_cmd(["lsof", "-nP", f"-iTCP:{MC_PORT}", "-sTCP:LISTEN"], timeout=4)
+    result = run_cmd(["lsof", "-nP", "-iTCP:43027", "-sTCP:LISTEN"], timeout=4)
     return {"ok": result["ok"] and "java" in result["stdout"], "raw": result["stdout"]}
-
-
-def minecraft_checks() -> list[dict]:
-    checks = [minecraft_status(MC_LOCAL_HOST, MC_PORT)]
-    checks[0]["role"] = "local"
-    checks[0]["label"] = "Mac mini / JE"
-    for index, host in enumerate(MC_ENTRY_HOSTS):
-        item = minecraft_status(host, MC_PORT)
-        item["role"] = "primary" if index == 0 else "regional"
-        item["label"] = "Primary entry" if index == 0 else f"Regional entry {index}"
-        checks.append(item)
-    return checks
 
 
 def status_payload() -> dict:
@@ -962,7 +918,11 @@ def status_payload() -> dict:
     warnings = []
     if len(procs["tunnel"]) > 1:
         warnings.append(f"duplicate tunnel ssh processes: {len(procs['tunnel'])}")
-    checks = minecraft_checks()
+    checks = [
+        minecraft_status("127.0.0.1"),
+        minecraft_status("playje.unmcserver.com"),
+        minecraft_status("la.playje.unmcserver.com"),
+    ]
     slow = slow_stats()
     process_stats = {
         "java": process_metrics(procs["java"]),
@@ -994,11 +954,6 @@ def status_payload() -> dict:
             },
         },
         "backup": backup_status(),
-        "panel": {
-            "mc_port": MC_PORT,
-            "local_host": MC_LOCAL_HOST,
-            "entry_hosts": MC_ENTRY_HOSTS,
-        },
         "warnings": warnings,
         "running": {
             "server": bool(procs["java"]) and local_listen()["ok"],

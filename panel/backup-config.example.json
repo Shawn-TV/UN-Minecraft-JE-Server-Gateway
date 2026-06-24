@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "mode": "daily",
+  "time": "08:00",
+  "interval_hours": 24,
+  "keep": 7,
+  "last_started_at": "",
+  "last_success_at": "",
+  "last_error": "",
+  "last_file": ""
+}

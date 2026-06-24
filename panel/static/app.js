@@ -861,7 +861,7 @@ function latencyClass(value) {
 }
 
 function endpointTone(entry) {
-  if (isRegionalProbeIssue(entry)) return "warn";
+  if (isLocalLaProbeIssue(entry)) return "warn";
   return entry?.ok ? latencyClass(entry.latency_ms) : "bad";
 }
 
@@ -869,49 +869,19 @@ function endpointByHost(items, host) {
   return (items || []).find((entry) => entry.host === host) || {};
 }
 
-function entryByRole(items, role) {
-  return (items || []).find((entry) => entry.role === role) || {};
-}
-
-function remoteEntries(items) {
-  return (items || []).filter((entry) => entry.role !== "local" && entry.host !== "127.0.0.1");
-}
-
-function primaryEntry(items) {
-  return entryByRole(items, "primary") || remoteEntries(items)[0] || {};
-}
-
-function regionalEntry(items) {
-  return entryByRole(items, "regional") || remoteEntries(items)[1] || {};
-}
-
-function endpointMetaFor(entry = {}, index = 0) {
-  if (endpointMeta[entry.host]) return endpointMeta[entry.host];
-  if (entry.role === "local" || entry.host === "127.0.0.1") {
-    return { name: "Mac mini / JE", color: "#009f8f" };
-  }
-  if (entry.role === "primary" || index === 1) {
-    return { name: "Primary entry", color: "#0a66ff" };
-  }
-  if (entry.role === "regional" || index >= 2) {
-    return { name: entry.label || "Regional entry", color: "#e2552d" };
-  }
-  return { name: entry.host || "--", color: "#777" };
-}
-
-function isRegionalProbeIssue(entry) {
-  return entry?.role === "regional" && !entry.ok;
+function isLocalLaProbeIssue(entry) {
+  return entry?.host === "la.playje.unmcserver.com" && !entry.ok;
 }
 
 function endpointValue(entry) {
   if (entry?.ok) return `${entry.latency_ms}ms`;
-  if (isRegionalProbeIssue(entry)) return "握手未返回";
+  if (isLocalLaProbeIssue(entry)) return "握手未返回";
   return "异常";
 }
 
 function endpointDetail(entry, fallback = "") {
-  if (isRegionalProbeIssue(entry)) return "Minecraft 状态握手未返回";
-  return fallback || entry?.host || "";
+  if (isLocalLaProbeIssue(entry)) return "Minecraft 状态握手未返回";
+  return fallback;
 }
 
 function formatCommandResult(result) {
@@ -997,8 +967,7 @@ function latencyChartMarkup(items) {
     .join("");
   const lines = hosts
     .map((host) => {
-      const source = items.find((entry) => entry.host === host) || { host };
-      const meta = endpointMetaFor(source, items.indexOf(source));
+      const meta = endpointMeta[host] || {};
       const points = state.latencyHistory
         .map((sample, index) => {
           const value = sample.values[host];
@@ -1019,47 +988,41 @@ function latencyChartMarkup(items) {
 }
 
 function renderEndpointRouteMap(items) {
-  const localByRole = entryByRole(items, "local");
-  const local = localByRole.host ? localByRole : endpointByHost(items, "127.0.0.1");
-  const primary = primaryEntry(items);
-  const regional = regionalEntry(items);
-  const node = (entry, fallbackLabel, mark, tone = "ok") => {
-    const meta = endpointMetaFor(entry);
-    return `
+  const local = endpointByHost(items, "127.0.0.1");
+  const beijing = endpointByHost(items, "playje.unmcserver.com");
+  const la = endpointByHost(items, "la.playje.unmcserver.com");
+  const node = (label, detail, mark, tone = "ok") => `
     <div class="route-node ${tone}">
       <i class="route-mark route-mark-${escapeHTML(mark.toLowerCase())}" aria-hidden="true">${escapeHTML(mark)}</i>
-      <b>${escapeHTML(meta.name || fallbackLabel)}</b>
-      <span>${escapeHTML(endpointValue(entry))}</span>
+      <b>${escapeHTML(label)}</b>
+      <span>${escapeHTML(detail)}</span>
     </div>
   `;
-  };
   const connector = () => `
     <div class="route-connector" aria-hidden="true">
       <i class="rail-forward"></i>
       <i class="rail-back"></i>
     </div>
   `;
-  const hasRegional = Boolean(regional.host);
   return `
     <div class="route-map route-map-roundtrip" aria-label="入口路径图示">
       <div class="route-line-main">
-        ${hasRegional ? `${node(regional, "Regional entry", "RG", regional.ok ? "warm" : "warn")}${connector()}` : ""}
-        ${node(primary, "Primary entry", "PE", primary.ok ? "blue" : "bad")}
+        ${node("LA 入口", endpointValue(la), "LA", la.ok ? "warm" : "warn")}
         ${connector()}
-        ${node(local, "Mac mini / JE", "JE", local.ok ? "teal" : "bad")}
+        ${node("北京入口", endpointValue(beijing), "BJ", beijing.ok ? "blue" : "bad")}
+        ${connector()}
+        ${node("Mac mini", endpointValue(local), "JE", local.ok ? "teal" : "bad")}
       </div>
-      <p class="route-copy">${hasRegional ? "Regional line: regional relay → primary relay → Mac mini / JE. " : ""}Primary line: primary relay → Mac mini / JE. Probes use the Minecraft Server List Ping round trip.</p>
+      <p class="route-copy">LA 线路：LA → 北京入口 → Mac mini / JE；北京线路：北京入口 → Mac mini / JE。探测内容是 Minecraft 状态握手，显示请求到响应返回的往返耗时。</p>
     </div>
   `;
 }
 
 function renderNetworkHealthDiagram(items) {
-  const remotes = remoteEntries(items);
-  const primary = primaryEntry(items);
-  const regional = regionalEntry(items);
-  const publicOk = remotes.filter((entry) => entry.ok).length;
-  const publicTotal = Math.max(1, remotes.length);
-  const delta = primary.ok && regional.ok ? regional.latency_ms - primary.latency_ms : null;
+  const beijing = endpointByHost(items, "playje.unmcserver.com");
+  const la = endpointByHost(items, "la.playje.unmcserver.com");
+  const publicOk = [beijing, la].filter((entry) => entry.ok).length;
+  const delta = beijing.ok && la.ok ? la.latency_ms - beijing.latency_ms : null;
   const deltaText = delta === null ? "--" : `${delta >= 0 ? "+" : ""}${delta}ms`;
   const healthCard = (label, value, detail, tone) => `
     <div class="network-health-card ${tone}">
@@ -1071,8 +1034,8 @@ function renderNetworkHealthDiagram(items) {
   `;
   return `
     <div class="network-health-grid network-health-compact" aria-label="入口健康图示">
-      ${healthCard("Public entries", `${publicOk}/${publicTotal}`, "reachable relay entries", publicOk === publicTotal ? "good" : publicOk ? "warn" : "bad")}
-      ${healthCard("Regional delta", isRegionalProbeIssue(regional) ? "未返回" : deltaText, "relative to primary", isRegionalProbeIssue(regional) ? "warn" : delta !== null && delta < 250 ? "good" : delta !== null && delta < 700 ? "warn" : "bad")}
+      ${healthCard("公网入口", `${publicOk}/2`, "北京与 LA 可达数", publicOk === 2 ? "good" : publicOk ? "warn" : "bad")}
+      ${healthCard("LA 差值", isLocalLaProbeIssue(la) ? "未返回" : deltaText, "相对北京入口", isLocalLaProbeIssue(la) ? "warn" : delta !== null && delta < 250 ? "good" : delta !== null && delta < 700 ? "warn" : "bad")}
     </div>
   `;
 }
@@ -1080,12 +1043,12 @@ function renderNetworkHealthDiagram(items) {
 function renderEntriesWidget(data, entry = {}) {
   const items = data.minecraft || [];
   if (!items.length) {
-    return `<div class="empty-state"><b>正在检测入口</b><span>本机、主入口和可选地区入口会在采样完成后显示延迟。</span></div>`;
+    return `<div class="empty-state"><b>正在检测入口</b><span>本机、北京和洛杉矶入口会在采样完成后显示延迟。</span></div>`;
   }
   const max = Math.max(1000, ...items.map((entry) => (entry.ok ? entry.latency_ms : 1000)));
   const rows = items
-    .map((entry, index) => {
-      const meta = endpointMetaFor(entry, index);
+    .map((entry) => {
+      const meta = endpointMeta[entry.host] || {};
       const value = endpointValue(entry);
       const width = entry.ok ? Math.max(2, Math.min(100, (entry.latency_ms / max) * 100)) : 100;
       return `
@@ -1408,7 +1371,7 @@ function renderSessionsWidget(data) {
       ${metricCard("JE screen", sessions["unmc-je"] || "no screen", "unmc-je")}
       ${metricCard("隧道 screen", sessions["unmc-tunnel"] || "no screen", "unmc-tunnel")}
       ${metricCard("面板 screen", sessions["unmc-panel"] || "no screen", "unmc-panel")}
-      ${metricCard("Java 进程", processCounts.java?.length || 0, "server")}
+      ${metricCard("Java 进程", processCounts.java?.length || 0, "purpur")}
       ${metricCard("SSH 隧道", processCounts.tunnel?.length || 0, "ssh")}
       ${metricCard("隧道守护", processCounts.tunnel_loop?.length || 0, "loop")}
     </div>
@@ -1596,7 +1559,7 @@ function renderStatusOverview(data) {
       <strong>${escapeHTML(title)}</strong>
       <p>${escapeHTML(props.motd || local.motd || "United Nations")}</p>
       ${renderFactGrid([
-        renderFact("玩家", local.ok ? `${local.online}/${local.max}` : "--/--", local.version || "Minecraft"),
+        renderFact("玩家", local.ok ? `${local.online}/${local.max}` : "--/--", local.version || "Purpur"),
         renderFact("难度", props.difficulty || "--", `模式 ${props.gamemode || "--"}`),
         renderFact("运行", java.etime || "--", "JE uptime"),
         renderFact("隧道", tunnelRunning ? "已连接" : "未连接", data.sessions?.["unmc-tunnel"] || "screen"),
@@ -1621,7 +1584,7 @@ function renderRuntimeOverview(data) {
       ${renderLoadPressure(load, cores)}
     </div>
     ${renderFactGrid([
-      renderFact("Java PID", java.pid || "--", "server"),
+      renderFact("Java PID", java.pid || "--", "purpur"),
       renderFact("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${tunnel.etime}` : "ssh"),
       renderFact("面板 PID", panel.pid || "--", panel.etime ? `运行 ${panel.etime}` : "panel"),
     ], "process-facts")}
@@ -1903,7 +1866,7 @@ function renderRuntimePanel(data) {
       ${renderLoadPressure(load, cores)}
     </div>
     <div class="mini-grid dense">
-      ${metricCard("Java PID", java.pid || "--", "server")}
+      ${metricCard("Java PID", java.pid || "--", "purpur")}
       ${metricCard("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${tunnel.etime}` : "ssh")}
       ${metricCard("面板 PID", panel.pid || "--", panel.etime ? `运行 ${panel.etime}` : "panel")}
       ${metricCard("TCP 连接", data.stats?.connections?.established ?? "--", "established")}
@@ -1951,26 +1914,24 @@ function renderCommandCenter(data) {
   const players = local.ok ? `${local.online}/${local.max}` : "--/--";
   const serverRunning = Boolean(data.running?.server);
   const tunnelRunning = Boolean(data.running?.tunnel);
-  const items = data.minecraft || [];
-  const remotes = remoteEntries(items);
-  const primary = primaryEntry(items);
-  const regional = regionalEntry(items);
-  const publicOk = remotes.length ? remotes.every((entry) => entry.ok) : false;
+  const beijing = (data.minecraft || []).find((entry) => entry.host === "playje.unmcserver.com");
+  const la = (data.minecraft || []).find((entry) => entry.host === "la.playje.unmcserver.com");
+  const publicOk = Boolean(beijing?.ok) && Boolean(la?.ok);
   const headline = serverRunning && tunnelRunning ? "Java 生存服正在运行" : serverRunning ? "服务器在线，入口需检查" : "服务器未运行";
-  const routeState = publicOk ? "公网入口正常" : primary?.ok ? "主入口可用，地区入口需检查" : "公网入口需检查";
+  const routeState = publicOk ? "公网入口正常" : beijing?.ok ? "北京入口可用，LA 状态握手未返回" : "公网入口需检查";
   return `
     <section class="command-center" aria-label="服务器驾驶舱">
       <div class="center-copy">
         <span>UN Java 生存服 · Mac mini</span>
         <h1>${escapeHTML(headline)}</h1>
-        <p>${escapeHTML(`${routeState} · ${props.motd || "UNMC Java server hosted by unmcserver.com"}`)}</p>
+        <p>${escapeHTML(`${routeState} · ${props.motd || "The Retards Season4 hosted by unmcserver.com"}`)}</p>
       </div>
       <div class="center-signals">
         ${renderMiniSignal("JE", serverRunning ? "运行中" : "未运行", props.gamemode ? `${props.gamemode} / ${props.difficulty || "--"}` : "等待采样", serverRunning ? "ok" : "bad")}
         ${renderMiniSignal("隧道", tunnelRunning ? "已连接" : "未连接", publicOk ? "公网入口正常" : "检查入口", tunnelRunning ? "ok" : "warn")}
-        ${renderMiniSignal("玩家", players, local.version || "Minecraft", Number(local.online || 0) > 0 ? "blue" : "neutral")}
-        ${renderMiniSignal("主入口", primary?.ok ? `${primary.latency_ms}ms` : "异常", primary?.host || "--", primary?.ok ? "blue" : "bad")}
-        ${renderMiniSignal("地区入口", endpointValue(regional), endpointDetail(regional, regional?.host || "--"), regional?.ok ? "warm" : "warn")}
+        ${renderMiniSignal("玩家", players, local.version || "Purpur", Number(local.online || 0) > 0 ? "blue" : "neutral")}
+        ${renderMiniSignal("北京入口", beijing?.ok ? `${beijing.latency_ms}ms` : "异常", "playje.unmcserver.com", beijing?.ok ? "blue" : "bad")}
+        ${renderMiniSignal("LA 入口", endpointValue(la), endpointDetail(la, "la.playje.unmcserver.com"), la?.ok ? "warm" : "warn")}
       </div>
       <div class="center-actions">
         <button class="quick-action save" data-console="save-all" type="button" ${state.busy || !serverRunning ? "disabled" : ""}>保存世界</button>
@@ -2619,8 +2580,8 @@ async function refreshStatus(options = {}) {
   state.latestData = data;
   updateBackupNotice(data);
   rememberLatency(data.minecraft || []);
-  const publicOk = remoteEntries(data.minecraft || []).some((entry) => entry.ok);
-  document.title = `${data.running?.server && publicOk ? "在线" : "检查"} · ${APP_TITLE}`;
+  const beijingOk = (data.minecraft || []).some((entry) => entry.host === "playje.unmcserver.com" && entry.ok);
+  document.title = `${data.running?.server && beijingOk ? "在线" : "检查"} · ${APP_TITLE}`;
   $("#lastUpdated").textContent = data.time || "--";
 }
 

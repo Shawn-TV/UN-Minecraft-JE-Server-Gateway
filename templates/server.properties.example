@@ -1,7 +1,7 @@
 # Minimal Minecraft Java server.properties example.
 # Copy to server/server.properties after downloading your server jar.
 
-server-port=25565
+server-port=43027
 server-ip=
 motd=UN-Minecraft-JE-Server-Gateway
 max-players=20

@@ -2,11 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT_DIR/scripts/load-env.sh"
-SCREEN_NAME="${SERVER_SCREEN_NAME:-${SCREEN_PREFIX:-unmc}-je}"
+SCREEN_NAME="${SCREEN_NAME:-unmc-je}"
 
 if { screen -ls 2>/dev/null || true; } | grep -q "[.]${SCREEN_NAME}[[:space:]]"; then
-  if pgrep -f "$ROOT_DIR/server/.*[.]jar" >/dev/null 2>&1; then
+  if pgrep -f 'purpur-.*[.]jar' >/dev/null 2>&1; then
     echo "Screen session $SCREEN_NAME is already running."
     exit 0
   fi

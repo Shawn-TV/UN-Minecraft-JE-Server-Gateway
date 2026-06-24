@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="700" viewBox="0 0 1100 700" role="img" aria-label="panel preview">
+  <rect width="1100" height="700" fill="#eef2f0"/>
+  <rect x="16" y="16" width="1068" height="668" rx="12" fill="#ffffff" stroke="#d8e0dc"/>
+  <rect x="28" y="28" width="1044" height="56" rx="8" fill="#f7f9f8" stroke="#d8e0dc"/>
+  <text x="44" y="64" fill="#17201b" font-size="22" font-family="Arial" font-weight="700">unmcserver-java-gateway · 控制面板</text>
+  <text x="980" y="64" text-anchor="end" fill="#637169" font-size="12" font-family="Arial">127.0.0.1:8765</text>
+
+  <g fill="#ffffff" stroke="#d8e0dc">
+    <rect x="28" y="102" width="245" height="86" rx="8"/>
+    <rect x="289" y="102" width="245" height="86" rx="8"/>
+    <rect x="550" y="102" width="245" height="86" rx="8"/>
+    <rect x="811" y="102" width="245" height="86" rx="8"/>
+    <rect x="28" y="206" width="245" height="86" rx="8"/>
+    <rect x="289" y="206" width="245" height="86" rx="8"/>
+    <rect x="550" y="206" width="245" height="86" rx="8"/>
+    <rect x="811" y="206" width="245" height="86" rx="8"/>
+  </g>
+
+  <g font-family="Arial" fill="#637169" font-size="12">
+    <text x="44" y="136" fill="#2f3b34">JE</text>
+    <text x="44" y="156">运行中</text>
+    <text x="44" y="176">unmc-je</text>
+
+    <text x="305" y="136">隧道</text>
+    <text x="305" y="156">已连接</text>
+    <text x="305" y="176">unmc-tunnel</text>
+
+    <text x="566" y="136">玩家</text>
+    <text x="566" y="156">12/20</text>
+    <text x="566" y="176">1.20.8</text>
+
+    <text x="827" y="136">运行 / CPU / 内存</text>
+    <text x="827" y="156">1h20m</text>
+    <text x="827" y="176">12% / 1024MB</text>
+
+    <text x="44" y="240">存档</text>
+    <text x="44" y="260">1.9GB</text>
+    <text x="44" y="280">server 1.3GB</text>
+
+    <text x="305" y="240">连接</text>
+    <text x="305" y="260">8 TCP</text>
+    <text x="305" y="280">load 0.6 / 0.8 / 0.7</text>
+
+    <text x="566" y="240">入口延迟</text>
+    <text x="566" y="260">北京：48ms</text>
+    <text x="566" y="280">LA：65ms</text>
+
+    <text x="827" y="240">本机 JE / 路由</text>
+    <text x="827" y="260">playje.unmcserver.com</text>
+    <text x="827" y="280">la.playje.unmcserver.com</text>
+  </g>
+
+  <rect x="28" y="328" width="526" height="344" rx="10" fill="#ffffff" stroke="#d8e0dc"/>
+  <rect x="566" y="328" width="247" height="344" rx="10" fill="#ffffff" stroke="#d8e0dc"/>
+  <rect x="829" y="328" width="227" height="344" rx="10" fill="#ffffff" stroke="#d8e0dc"/>
+
+  <text x="44" y="356" fill="#17201b" font-family="Arial" font-size="15" font-weight="700">日志面板</text>
+  <text x="44" y="378" fill="#637169" font-size="12" font-family="Arial">[INFO] Saving chunks... [MC] 用户上线: Steve</text>
+  <text x="44" y="398" fill="#637169" font-size="12" font-family="Arial">[WARN] Tunnel reconnect scheduled in 5 seconds...</text>
+  <text x="44" y="418" fill="#637169" font-size="12" font-family="Arial">[INFO] Player joined: Alex</text>
+  <text x="44" y="438" fill="#637169" font-size="12" font-family="Arial">[INFO] Player left: Notch</text>
+
+  <text x="582" y="356" fill="#17201b" font-family="Arial" font-size="15" font-weight="700">控制台命令</text>
+  <text x="582" y="386" fill="#637169" font-size="12" font-family="Arial">输入: /say 服务器即将重启</text>
+  <rect x="582" y="404" width="180" height="36" rx="8" fill="#f7f9f8" stroke="#d8e0dc"/>
+  <text x="592" y="428" fill="#2d5f9a" font-size="12" font-family="Arial">save-all</text>
+  <rect x="582" y="452" width="180" height="36" rx="8" fill="#f7f9f8" stroke="#d8e0dc"/>
+  <text x="592" y="476" fill="#2d5f9a" font-size="12" font-family="Arial">list</text>
+
+  <text x="845" y="356" fill="#17201b" font-family="Arial" font-size="15" font-weight="700">路径说明</text>
+  <text x="845" y="386" fill="#637169" font-size="12" font-family="Arial">Mac mini → SSH 隧道 → 公网入口</text>
+  <text x="845" y="406" fill="#637169" font-size="12" font-family="Arial">支持本地监听和隧道重连</text>
+  <text x="845" y="426" fill="#637169" font-size="12" font-family="Arial">MOTD / 玩家 / 延迟趋势</text>
+</svg>

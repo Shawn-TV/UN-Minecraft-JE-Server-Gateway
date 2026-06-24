@@ -20,7 +20,7 @@ It includes:
 
 - Mac mini side scripts for starting Minecraft Java Edition.
 - SSH reverse tunnel scripts for exposing a local Minecraft port through a public relay server.
-- A local web panel for status, logs, commands, player data, plugin toggles, server.properties editing, and local world backups.
+- The same local web panel UI currently running on the UNMC Mac mini, including the UN logo, glass layout, status pages, logs, commands, player data, plugin toggles, server.properties editing, and local world backups.
 - Optional accelerator templates for additional regional entry points.
 - Beginner-friendly install scripts and examples.
 
@@ -43,37 +43,37 @@ The diagrams use the current public `unmcserver.com` Java Edition layout:
 - The Mac mini still hosts the actual Minecraft world and the local panel.
 - Private IPs, keys, ports, logs, backups, and world data are intentionally not included.
 
-<img src="assets/architecture.svg" alt="UN-Minecraft-JE-Server-Gateway architecture" width="100%">
+<img src="assets/architecture.png" alt="UN-Minecraft-JE-Server-Gateway architecture" width="100%">
 
 ### Traffic Model
 
-<img src="assets/traffic-model.svg" alt="UN-Minecraft-JE-Server-Gateway traffic model" width="100%">
+<img src="assets/traffic-model.png" alt="UN-Minecraft-JE-Server-Gateway traffic model" width="100%">
 
 ---
 
 ## Panel Screenshots
 
-The screenshots below use public UNMC-style sample data. They show the intended panel experience and current route naming without exposing production players, logs, IPs, backups, or private configuration.
+The screenshots below are captured from the local panel currently running on the UNMC Mac mini. Player names, log text, and backup file names are blurred or redacted before publishing; the UI, layout, logo, and controls are the live panel.
 
 ### Overview
 
-<img src="assets/screenshots/panel-overview.svg" alt="Panel overview with server status, tunnel status, players, latency and quick actions" width="100%">
+<img src="assets/screenshots/panel-overview.png" alt="Live panel overview with server status, tunnel status, latency and storage metrics" width="100%">
 
 ### Network And Entry Routes
 
-<img src="assets/screenshots/panel-network.svg" alt="Network page with Beijing relay, Los Angeles accelerator and latency chart" width="100%">
+Network and entry route details are part of the overview status page above.
 
 ### Players And Statistics
 
-<img src="assets/screenshots/panel-players.svg" alt="Players page with current online players, recent joins and leaderboards" width="100%">
+<img src="assets/screenshots/panel-players.png" alt="Live panel players page with current online players, recent joins and leaderboards with names blurred" width="100%">
 
 ### Terminal And Commands
 
-<img src="assets/screenshots/panel-terminal.svg" alt="Terminal page with server logs, quick actions and Minecraft command input" width="100%">
+<img src="assets/screenshots/panel-terminal.png" alt="Live panel terminal page with log text redacted and command controls visible" width="100%">
 
 ### Settings, Plugins And Backups
 
-<img src="assets/screenshots/panel-settings-backup.svg" alt="Settings page with server.properties summary, plugin toggles and local backup schedule" width="100%">
+<img src="assets/screenshots/panel-settings-backup.png" alt="Live panel settings page with server.properties editing, plugin toggles and local backup schedule" width="100%">
 
 ---
 
@@ -450,7 +450,7 @@ GPL-3.0. See [LICENSE](LICENSE).
 
 - Mac mini 上启动 Minecraft Java 服务器的脚本。
 - 用 SSH 反向隧道把本机 Minecraft 端口暴露到公网 VPS 的脚本。
-- 本地 Web 面板。
+- 与 UNMC Mac mini 当前正在运行版本一致的本地 Web 面板，包括 UN logo、毛玻璃布局、状态页、日志、指令、玩家数据、插件开关、server.properties 修改和本机备份。
 - 自动备份。
 - 日志、控制台命令、玩家状态、插件开关、server.properties 图形化修改。
 - 可选地区加速入口的配置模板。
@@ -475,33 +475,33 @@ GPL-3.0. See [LICENSE](LICENSE).
 - 真正跑世界和面板的机器仍然是 Mac mini。
 - 私有 IP、密钥、端口、日志、备份和世界存档不会放进仓库。
 
-<img src="assets/architecture.svg" alt="UN-Minecraft-JE-Server-Gateway 架构图" width="100%">
+<img src="assets/architecture.png" alt="UN-Minecraft-JE-Server-Gateway 架构图" width="100%">
 
 ---
 
 ## 面板截图
 
-下面的截图使用 UNMC 风格的公开示例数据，只展示面板体验和当前入口命名，不包含生产玩家、日志、IP、备份或私有配置。
+下面的截图直接来自 UNMC Mac mini 本机正在运行的面板。玩家名、日志正文和备份文件名在发布前做了模糊或隐藏；UI、布局、logo 和控件是当前实机版本。
 
 ### 运行总览
 
-<img src="assets/screenshots/panel-overview.svg" alt="面板运行总览：服务器状态、隧道状态、玩家、延迟和快捷操作" width="100%">
+<img src="assets/screenshots/panel-overview.png" alt="实机面板运行总览：服务器状态、隧道状态、延迟和存储统计" width="100%">
 
 ### 网络入口
 
-<img src="assets/screenshots/panel-network.svg" alt="网络入口页面：北京 relay、洛杉矶加速入口和延迟图表" width="100%">
+网络入口和路径延迟已经包含在上面的运行总览里。
 
 ### 玩家统计
 
-<img src="assets/screenshots/panel-players.svg" alt="玩家页面：当前在线、最近上线和榜单" width="100%">
+<img src="assets/screenshots/panel-players.png" alt="实机玩家页面：当前在线、最近上线和榜单，玩家名已模糊" width="100%">
 
 ### 终端命令
 
-<img src="assets/screenshots/panel-terminal.svg" alt="终端页面：服务器日志、快捷按钮和控制台命令输入" width="100%">
+<img src="assets/screenshots/panel-terminal.png" alt="实机终端页面：日志正文已隐藏，快捷按钮和控制台命令输入保留" width="100%">
 
 ### 设置、插件和备份
 
-<img src="assets/screenshots/panel-settings-backup.svg" alt="设置页面：server.properties 摘要、插件开关和本机备份计划" width="100%">
+<img src="assets/screenshots/panel-settings-backup.png" alt="实机设置页面：server.properties 摘要、插件开关和本机备份计划" width="100%">
 
 ---
 

@@ -2,8 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT_DIR/scripts/load-env.sh"
-SCREEN_NAME="${PANEL_SCREEN_NAME:-${SCREEN_PREFIX:-unmc}-panel}"
+SCREEN_NAME="${SCREEN_NAME:-unmc-panel}"
 PANEL_PORT="${PANEL_PORT:-8765}"
 
 if { screen -ls 2>/dev/null || true; } | grep -q "[.]${SCREEN_NAME}[[:space:]]"; then

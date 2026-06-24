@@ -2,16 +2,19 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT_DIR/scripts/load-env.sh"
+if [[ -f "$ROOT_DIR/scripts/load-env.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/scripts/load-env.sh"
+fi
 
 KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/unmc_tunnel_ed25519}"
 REMOTE_HOST="${REMOTE_HOST:-relay.example.com}"
 REMOTE_USER="${REMOTE_USER:-minecraft_tunnel}"
 REMOTE_SSH_PORT="${REMOTE_SSH_PORT:-22}"
 REMOTE_BIND="${REMOTE_BIND:-0.0.0.0}"
-REMOTE_FORWARD_PORT="${REMOTE_FORWARD_PORT:-${MC_PORT:-25565}}"
+REMOTE_FORWARD_PORT="${REMOTE_FORWARD_PORT:-43027}"
 LOCAL_HOST="${LOCAL_HOST:-127.0.0.1}"
-LOCAL_PORT="${LOCAL_PORT:-${MC_PORT:-25565}}"
+LOCAL_PORT="${LOCAL_PORT:-43027}"
 KNOWN_HOSTS_FILE="${SSH_KNOWN_HOSTS_FILE:-$HOME/.ssh/known_hosts}"
 
 if [[ "$REMOTE_HOST" == "relay.example.com" ]]; then

@@ -2,7 +2,6 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT_DIR/scripts/load-env.sh"
 SERVER_DIR="$ROOT_DIR/server"
 LOCAL_JAVA="$ROOT_DIR/.runtime/java/bin/java"
 
@@ -15,11 +14,9 @@ else
   exit 1
 fi
 
-SERVER_JAR_PATTERN="${SERVER_JAR_PATTERN:-*.jar}"
-JAR_PATH="$(find "$SERVER_DIR" -maxdepth 1 -type f -name "$SERVER_JAR_PATTERN" -print | sort | head -n 1)"
+JAR_PATH="$(find "$SERVER_DIR" -maxdepth 1 -type f -name 'purpur-*.jar' -print -quit)"
 if [[ -z "$JAR_PATH" ]]; then
-  echo "No server jar matching '$SERVER_JAR_PATTERN' found in $SERVER_DIR" >&2
-  echo "Run ./scripts/download-server.sh or set SERVER_JAR_PATTERN in .env." >&2
+  echo "No purpur jar found in $SERVER_DIR" >&2
   exit 1
 fi
 
@@ -31,10 +28,8 @@ fi
 mkdir -p "$ROOT_DIR/logs"
 cd "$SERVER_DIR"
 
-MIN_RAM="${MC_MIN_RAM:-1G}"
-MAX_RAM="${MC_MAX_RAM:-3G}"
-LANGUAGE="${JAVA_USER_LANGUAGE:-en}"
-COUNTRY="${JAVA_USER_COUNTRY:-US}"
+MIN_RAM="${MC_MIN_RAM:-512M}"
+MAX_RAM="${MC_MAX_RAM:-2304M}"
 
 exec "$JAVA_BIN" \
   --sun-misc-unsafe-memory-access=allow \
@@ -42,8 +37,8 @@ exec "$JAVA_BIN" \
   "-Xms$MIN_RAM" \
   "-Xmx$MAX_RAM" \
   -Dfile.encoding=UTF-8 \
-  -Duser.language="$LANGUAGE" \
-  -Duser.country="$COUNTRY" \
+  -Duser.language=zh \
+  -Duser.country=CN \
   -Dterminal.jline=false \
   -Dterminal.ansi=false \
   -jar "$JAR_PATH" --nogui

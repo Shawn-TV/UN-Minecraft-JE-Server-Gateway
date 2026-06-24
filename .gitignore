@@ -1,5 +1,6 @@
 .DS_Store
 .env
+panel/backup-config.json
 .runtime/
 server/
 logs/
