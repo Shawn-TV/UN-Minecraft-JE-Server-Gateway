@@ -7,7 +7,7 @@
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#0f172a" flood-opacity=".12"/></filter>
     <style>.bg{fill:url(#bg)}.bar{fill:rgba(255,255,255,.76)}.card{fill:url(#glass);stroke:rgba(255,255,255,.84);filter:url(#shadow)}.soft{fill:rgba(255,255,255,.62);stroke:rgba(15,23,42,.08)}.ink{fill:#0a0d14;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.muted{fill:#667085;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.h1{font-size:40px;font-weight:850}.h2{font-size:24px;font-weight:820}.value{font-size:31px;font-weight:850}.small{font-size:16px}.tiny{font-size:13px}.label{font-size:14px;font-weight:760}.teal{fill:#009f8f}.blue{fill:#0a66ff}.orange{fill:#e2552d}.row{fill:rgba(255,255,255,.66);stroke:rgba(15,23,42,.08)}</style>
   </defs>
-  <rect class="bg" width="1280" height="760" rx="26"/><rect class="bar" width="1280" height="78"/><text class="ink h2" x="42" y="49">Players · activity and stats</text><text class="muted small" x="1010" y="49">sanitized demo</text>
+  <rect class="bg" width="1280" height="760" rx="26"/><rect class="bar" width="1280" height="78"/><text class="ink h2" x="42" y="49">Players · activity and stats</text><text class="muted small" x="1000" y="49">UNMC public sample</text>
   <rect class="card" x="80" y="118" width="1120" height="190" rx="28"/>
   <text class="ink h1" x="118" y="174">Player insight</text><text class="muted small" x="118" y="204">Current online list is separated from recent join history.</text>
   <g transform="translate(118 235)"><rect class="soft" width="150" height="54" rx="16"/><text class="muted tiny" x="18" y="22">Known players</text><text class="ink value" x="18" y="48">58</text></g>
@@ -17,18 +17,18 @@
   <g transform="translate(798 235)"><rect class="soft" width="150" height="54" rx="16"/><text class="muted tiny" x="18" y="22">Mob kills</text><text class="ink value" x="18" y="48">12.8k</text></g>
   <g transform="translate(968 235)"><rect class="soft" width="150" height="54" rx="16"/><text class="muted tiny" x="18" y="22">Online</text><text class="blue value" x="18" y="48">3</text></g>
   <rect class="card" x="80" y="340" width="350" height="330" rx="26"/><text class="ink h2" x="112" y="390">Currently online</text>
-  <rect class="row" x="112" y="420" width="286" height="56" rx="16"/><circle cx="140" cy="448" r="10" fill="#009f8f"/><text class="ink label" x="162" y="443">DemoPlayer_A</text><text class="muted tiny" x="162" y="462">via primary relay</text>
-  <rect class="row" x="112" y="490" width="286" height="56" rx="16"/><circle cx="140" cy="518" r="10" fill="#009f8f"/><text class="ink label" x="162" y="513">DemoPlayer_B</text><text class="muted tiny" x="162" y="532">via regional relay</text>
-  <rect class="row" x="112" y="560" width="286" height="56" rx="16"/><circle cx="140" cy="588" r="10" fill="#009f8f"/><text class="ink label" x="162" y="583">DemoPlayer_C</text><text class="muted tiny" x="162" y="602">local status sample</text>
+  <rect class="row" x="112" y="420" width="286" height="56" rx="16"/><circle cx="140" cy="448" r="10" fill="#009f8f"/><text class="ink label" x="162" y="443">UN_Player_A</text><text class="muted tiny" x="162" y="462">via Beijing entry</text>
+  <rect class="row" x="112" y="490" width="286" height="56" rx="16"/><circle cx="140" cy="518" r="10" fill="#009f8f"/><text class="ink label" x="162" y="513">UN_Player_B</text><text class="muted tiny" x="162" y="532">via LA accelerator</text>
+  <rect class="row" x="112" y="560" width="286" height="56" rx="16"/><circle cx="140" cy="588" r="10" fill="#009f8f"/><text class="ink label" x="162" y="583">UN_Player_C</text><text class="muted tiny" x="162" y="602">local status sample</text>
   <rect class="card" x="465" y="340" width="330" height="330" rx="26"/><text class="ink h2" x="497" y="390">Recent joins</text>
   <text class="muted tiny" x="698" y="390">latest 4</text>
-  <text class="ink label" x="497" y="435">12:42</text><text class="muted small" x="560" y="435">DemoPlayer_B joined</text>
-  <text class="ink label" x="497" y="485">12:18</text><text class="muted small" x="560" y="485">DemoPlayer_C joined</text>
-  <text class="ink label" x="497" y="535">11:56</text><text class="muted small" x="560" y="535">DemoPlayer_A joined</text>
-  <text class="ink label" x="497" y="585">10:31</text><text class="muted small" x="560" y="585">DemoPlayer_D joined</text>
+  <text class="ink label" x="497" y="435">12:42</text><text class="muted small" x="560" y="435">UN_Player_B joined</text>
+  <text class="ink label" x="497" y="485">12:18</text><text class="muted small" x="560" y="485">UN_Player_C joined</text>
+  <text class="ink label" x="497" y="535">11:56</text><text class="muted small" x="560" y="535">UN_Player_A joined</text>
+  <text class="ink label" x="497" y="585">10:31</text><text class="muted small" x="560" y="585">UN_Player_D joined</text>
   <rect class="card" x="830" y="340" width="370" height="330" rx="26"/><text class="ink h2" x="862" y="390">Leaderboards</text>
-  <text class="muted tiny" x="862" y="430">Playtime</text><text class="ink label" x="862" y="458">1. DemoPlayer_A</text><text class="blue label" x="1100" y="458">148h</text>
-  <text class="ink label" x="862" y="498">2. DemoPlayer_B</text><text class="blue label" x="1100" y="498">103h</text>
-  <text class="muted tiny" x="862" y="546">Blocks mined</text><text class="ink label" x="862" y="574">DemoPlayer_C</text><text class="teal label" x="1088" y="574">90k</text>
-  <text class="muted tiny" x="862" y="622">Advancements</text><text class="ink label" x="862" y="650">DemoPlayer_D</text><text class="orange label" x="1098" y="650">83</text>
+  <text class="muted tiny" x="862" y="430">Playtime</text><text class="ink label" x="862" y="458">1. UN_Player_A</text><text class="blue label" x="1100" y="458">148h</text>
+  <text class="ink label" x="862" y="498">2. UN_Player_B</text><text class="blue label" x="1100" y="498">103h</text>
+  <text class="muted tiny" x="862" y="546">Blocks mined</text><text class="ink label" x="862" y="574">UN_Player_C</text><text class="teal label" x="1088" y="574">90k</text>
+  <text class="muted tiny" x="862" y="622">Advancements</text><text class="ink label" x="862" y="650">UN_Player_D</text><text class="orange label" x="1098" y="650">83</text>
 </svg>
