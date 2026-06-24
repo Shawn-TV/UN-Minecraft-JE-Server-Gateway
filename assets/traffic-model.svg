@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
-  <title id="title">UNMC Java Server Stack traffic model</title>
+  <title id="title">UNMC Java Gateway traffic model</title>
   <desc id="desc">The Mac mini opens an SSH reverse tunnel to the relay VPS. Players connect to the relay, which forwards TCP traffic through the tunnel to the local Minecraft server.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

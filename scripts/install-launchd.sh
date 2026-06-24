@@ -11,14 +11,14 @@ render_plist() {
   sed "s#__REPO_PATH__#$ROOT_DIR#g" "$template" > "$target"
 }
 
-render_plist "$ROOT_DIR/templates/launchd.je-server.plist.example" "$AGENT_DIR/com.unmc.java-server-stack.je.plist"
-render_plist "$ROOT_DIR/templates/launchd.tunnel.plist.example" "$AGENT_DIR/com.unmc.java-server-stack.tunnel.plist"
+render_plist "$ROOT_DIR/templates/launchd.je-server.plist.example" "$AGENT_DIR/com.unmc.java-gateway.je.plist"
+render_plist "$ROOT_DIR/templates/launchd.tunnel.plist.example" "$AGENT_DIR/com.unmc.java-gateway.tunnel.plist"
 
-launchctl unload "$AGENT_DIR/com.unmc.java-server-stack.je.plist" >/dev/null 2>&1 || true
-launchctl unload "$AGENT_DIR/com.unmc.java-server-stack.tunnel.plist" >/dev/null 2>&1 || true
-launchctl load "$AGENT_DIR/com.unmc.java-server-stack.je.plist"
-launchctl load "$AGENT_DIR/com.unmc.java-server-stack.tunnel.plist"
+launchctl unload "$AGENT_DIR/com.unmc.java-gateway.je.plist" >/dev/null 2>&1 || true
+launchctl unload "$AGENT_DIR/com.unmc.java-gateway.tunnel.plist" >/dev/null 2>&1 || true
+launchctl load "$AGENT_DIR/com.unmc.java-gateway.je.plist"
+launchctl load "$AGENT_DIR/com.unmc.java-gateway.tunnel.plist"
 
 echo "Installed launchd agents:"
-echo "  $AGENT_DIR/com.unmc.java-server-stack.je.plist"
-echo "  $AGENT_DIR/com.unmc.java-server-stack.tunnel.plist"
+echo "  $AGENT_DIR/com.unmc.java-gateway.je.plist"
+echo "  $AGENT_DIR/com.unmc.java-gateway.tunnel.plist"

@@ -19,10 +19,10 @@ status=0
 
 if [[ "$status" -eq 0 ]]; then
   /usr/bin/open "$PANEL_URL" >> "$LOG_FILE" 2>&1 || true
-  /usr/bin/osascript -e 'display notification "Java server, tunnel, and panel are running." with title "UNMC Java Server Stack"' >/dev/null 2>&1 || true
+  /usr/bin/osascript -e 'display notification "Java server, tunnel, and panel are running." with title "UNMC Java Gateway"' >/dev/null 2>&1 || true
 else
   /usr/bin/open "$LOG_FILE" >/dev/null 2>&1 || true
-  /usr/bin/osascript -e 'display notification "Startup hit an error. The log has been opened." with title "UNMC Java Server Stack"' >/dev/null 2>&1 || true
+  /usr/bin/osascript -e 'display notification "Startup hit an error. The log has been opened." with title "UNMC Java Gateway"' >/dev/null 2>&1 || true
 fi
 
 {

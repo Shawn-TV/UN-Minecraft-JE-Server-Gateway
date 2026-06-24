@@ -1,4 +1,4 @@
-# UNMC Java Server Stack
+# UNMC Java Gateway
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform: macOS + Ubuntu](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu-lightgrey.svg)](#supported-platforms)
@@ -14,7 +14,7 @@ This repository is not just a dashboard. It is a practical infrastructure patter
 
 ## What This Project Is
 
-UNMC Java Server Stack is the open-source deployment stack behind the Java server architecture used by `unmcserver.com`.
+UNMC Java Gateway is the open-source deployment stack behind the Java server architecture used by `unmcserver.com`.
 
 It includes:
 
@@ -36,11 +36,11 @@ It does **not** include:
 
 ## Architecture
 
-<img src="assets/architecture.svg" alt="UNMC Java Server Stack architecture" width="100%">
+<img src="assets/architecture.svg" alt="UNMC Java Gateway architecture" width="100%">
 
 ### Traffic Model
 
-<img src="assets/traffic-model.svg" alt="UNMC Java Server Stack traffic model" width="100%">
+<img src="assets/traffic-model.svg" alt="UNMC Java Gateway traffic model" width="100%">
 
 ---
 
@@ -95,8 +95,8 @@ sudo bash scripts/setup-relay-ubuntu.sh
 If you are running this script from a fresh clone on the relay, use:
 
 ```bash
-git clone https://github.com/Shawn-TV/unmc-java-server-stack.git
-cd unmc-java-server-stack
+git clone https://github.com/Shawn-TV/unmc-java-gateway.git
+cd unmc-java-gateway
 sudo bash scripts/setup-relay-ubuntu.sh
 ```
 
@@ -117,8 +117,8 @@ Then add the Mac mini SSH public key to:
 On the Mac mini:
 
 ```bash
-git clone https://github.com/Shawn-TV/unmc-java-server-stack.git
-cd unmc-java-server-stack
+git clone https://github.com/Shawn-TV/unmc-java-gateway.git
+cd unmc-java-gateway
 cp .env.example .env
 ```
 
@@ -391,7 +391,7 @@ GPL-3.0. See [LICENSE](LICENSE).
 
 ---
 
-# UNMC Java Server Stack 中文说明
+# UNMC Java Gateway 中文说明
 
 [unmcserver.com](https://unmcserver.com/) Java 服务器正在使用的 Mac mini + SSH 反向隧道 + 本地 Web 面板 + 可选地区加速入口方案。
 
@@ -423,7 +423,7 @@ GPL-3.0. See [LICENSE](LICENSE).
 
 ## 架构
 
-<img src="assets/architecture.svg" alt="UNMC Java Server Stack 架构图" width="100%">
+<img src="assets/architecture.svg" alt="UNMC Java Gateway 架构图" width="100%">
 
 ---
 
@@ -463,8 +463,8 @@ Mac mini 侧：
 在 Ubuntu VPS 上运行：
 
 ```bash
-git clone https://github.com/Shawn-TV/unmc-java-server-stack.git
-cd unmc-java-server-stack
+git clone https://github.com/Shawn-TV/unmc-java-gateway.git
+cd unmc-java-gateway
 sudo bash scripts/setup-relay-ubuntu.sh
 ```
 
@@ -485,8 +485,8 @@ sudo bash scripts/setup-relay-ubuntu.sh
 在 Mac mini 上：
 
 ```bash
-git clone https://github.com/Shawn-TV/unmc-java-server-stack.git
-cd unmc-java-server-stack
+git clone https://github.com/Shawn-TV/unmc-java-gateway.git
+cd unmc-java-gateway
 cp .env.example .env
 ```
 
