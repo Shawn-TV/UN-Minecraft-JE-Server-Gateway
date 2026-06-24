@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.unmc.java-gateway.tunnel</string>
+  <string>com.unmc.minecraft-je-server-gateway.tunnel</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/screen</string>

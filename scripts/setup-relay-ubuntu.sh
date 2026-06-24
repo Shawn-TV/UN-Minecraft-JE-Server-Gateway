@@ -23,7 +23,7 @@ chown -R "$RELAY_USER:$RELAY_USER" "/home/$RELAY_USER/.ssh"
 chmod 700 "/home/$RELAY_USER/.ssh"
 chmod 600 "/home/$RELAY_USER/.ssh/authorized_keys"
 
-cat >/etc/ssh/sshd_config.d/unmc-java-gateway.conf <<EOF
+cat >/etc/ssh/sshd_config.d/minecraft-je-server-gateway.conf <<EOF
 GatewayPorts clientspecified
 AllowTcpForwarding yes
 ClientAliveInterval 30

@@ -3,7 +3,7 @@
 
 server-port=25565
 server-ip=
-motd=UNMC Java Gateway
+motd=UN-Minecraft-JE-Server-Gateway
 max-players=20
 gamemode=survival
 difficulty=normal
