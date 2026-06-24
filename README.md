@@ -44,6 +44,32 @@ It does **not** include:
 
 ---
 
+## Panel Screenshots
+
+The screenshots below use sanitized demo data. They show the intended panel experience without exposing production players, logs, IPs, backups, or private configuration.
+
+### Overview
+
+<img src="assets/screenshots/panel-overview.svg" alt="Panel overview with server status, tunnel status, players, latency and quick actions" width="100%">
+
+### Network And Relay Entries
+
+<img src="assets/screenshots/panel-network.svg" alt="Network page with primary relay, optional regional relay and latency chart" width="100%">
+
+### Players And Statistics
+
+<img src="assets/screenshots/panel-players.svg" alt="Players page with current online players, recent joins and leaderboards" width="100%">
+
+### Terminal And Commands
+
+<img src="assets/screenshots/panel-terminal.svg" alt="Terminal page with server logs, quick actions and Minecraft command input" width="100%">
+
+### Settings, Plugins And Backups
+
+<img src="assets/screenshots/panel-settings-backup.svg" alt="Settings page with server.properties summary, plugin toggles and local backup schedule" width="100%">
+
+---
+
 ## Supported Platforms
 
 ### Mac mini / Minecraft host
@@ -424,6 +450,32 @@ GPL-3.0. See [LICENSE](LICENSE).
 ## 架构
 
 <img src="assets/architecture.svg" alt="UN-Minecraft-JE-Server-Gateway 架构图" width="100%">
+
+---
+
+## 面板截图
+
+下面的截图使用脱敏 demo 数据，只展示面板体验，不包含生产玩家、日志、IP、备份或私有配置。
+
+### 运行总览
+
+<img src="assets/screenshots/panel-overview.svg" alt="面板运行总览：服务器状态、隧道状态、玩家、延迟和快捷操作" width="100%">
+
+### 网络入口
+
+<img src="assets/screenshots/panel-network.svg" alt="网络入口页面：主 relay、可选地区 relay 和延迟图表" width="100%">
+
+### 玩家统计
+
+<img src="assets/screenshots/panel-players.svg" alt="玩家页面：当前在线、最近上线和榜单" width="100%">
+
+### 终端命令
+
+<img src="assets/screenshots/panel-terminal.svg" alt="终端页面：服务器日志、快捷按钮和控制台命令输入" width="100%">
+
+### 设置、插件和备份
+
+<img src="assets/screenshots/panel-settings-backup.svg" alt="设置页面：server.properties 摘要、插件开关和本机备份计划" width="100%">
 
 ---
 

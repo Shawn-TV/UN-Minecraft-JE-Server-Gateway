@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Network and relay screenshot</title>
+  <desc id="desc">Sanitized demo screenshot of entry route status, primary relay, regional relay and latency chart.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f9fbff"/><stop offset="1" stop-color="#e9f2f8"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".88"/><stop offset="1" stop-color="#ffffff" stop-opacity=".45"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#0f172a" flood-opacity=".12"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0 10 5 0 10z" fill="#0a66ff"/></marker>
+    <style>
+      .bg{fill:url(#bg)} .bar{fill:rgba(255,255,255,.76)} .card{fill:url(#glass);stroke:rgba(255,255,255,.84);filter:url(#shadow)} .soft{fill:rgba(255,255,255,.60);stroke:rgba(15,23,42,.08)}
+      .ink{fill:#0a0d14;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.muted{fill:#667085;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      .h1{font-size:44px;font-weight:850}.h2{font-size:25px;font-weight:820}.small{font-size:16px}.tiny{font-size:13px}.label{font-size:14px;font-weight:760}.value{font-size:28px;font-weight:850}
+      .teal{fill:#009f8f}.blue{fill:#0a66ff}.orange{fill:#e2552d}.rail{stroke:#0a66ff;stroke-width:3;fill:none;marker-end:url(#arrow)}.back{stroke:#58c7bd;stroke-width:2;fill:none;stroke-dasharray:7 8}
+      .grid{stroke:#d9e1e8}.chart-a{stroke:#0a66ff;stroke-width:4;fill:none}.chart-b{stroke:#e2552d;stroke-width:4;fill:none}.chart-c{stroke:#009f8f;stroke-width:4;fill:none}
+    </style>
+  </defs>
+  <rect class="bg" width="1280" height="760" rx="26"/>
+  <rect class="bar" width="1280" height="78"/>
+  <text class="ink h2" x="42" y="49">Network · entries and tunnel</text>
+  <text class="muted small" x="1010" y="49">demo data</text>
+  <rect class="card" x="90" y="118" width="1100" height="270" rx="28"/>
+  <text class="ink h1" x="128" y="176">Entry route health</text>
+  <text class="muted small" x="130" y="206">Minecraft Server List Ping probes each entry and measures round-trip response time.</text>
+  <g transform="translate(134 255)">
+    <rect class="soft" width="170" height="76" rx="20"/><text class="ink label" x="85" y="30" text-anchor="middle">Regional relay</text><text class="orange value" x="85" y="60" text-anchor="middle">91ms</text>
+  </g>
+  <path class="rail" d="M320 292H474"/><path class="back" d="M474 306H320"/>
+  <g transform="translate(494 255)">
+    <rect class="soft" width="170" height="76" rx="20"/><text class="ink label" x="85" y="30" text-anchor="middle">Primary relay</text><text class="blue value" x="85" y="60" text-anchor="middle">28ms</text>
+  </g>
+  <path class="rail" d="M680 292H834"/><path class="back" d="M834 306H680"/>
+  <g transform="translate(854 255)">
+    <rect class="soft" width="170" height="76" rx="20"/><text class="ink label" x="85" y="30" text-anchor="middle">Mac mini / JE</text><text class="teal value" x="85" y="60" text-anchor="middle">1ms</text>
+  </g>
+  <rect class="card" x="90" y="425" width="520" height="245" rx="26"/>
+  <text class="ink h2" x="126" y="475">Relay summary</text>
+  <text class="muted small" x="126" y="505">Public entries reachable</text>
+  <text class="ink value" x="126" y="560">2 / 2</text>
+  <text class="muted tiny" x="126" y="590">Primary and regional route are both answering status probes.</text>
+  <text class="muted small" x="340" y="505">Regional delta</text>
+  <text class="orange value" x="340" y="560">+63ms</text>
+  <text class="muted tiny" x="340" y="590">Compared with primary relay.</text>
+  <rect class="card" x="650" y="425" width="540" height="245" rx="26"/>
+  <text class="ink h2" x="686" y="475">Latency trend</text>
+  <g transform="translate(700 510)">
+    <line class="grid" x1="0" y1="0" x2="430" y2="0"/><line class="grid" x1="0" y1="55" x2="430" y2="55"/><line class="grid" x1="0" y1="110" x2="430" y2="110"/>
+    <polyline class="chart-b" points="0,62 45,80 90,46 135,58 180,35 225,48 270,42 315,44 360,30 430,38"/>
+    <polyline class="chart-a" points="0,92 45,88 90,86 135,84 180,86 225,82 270,84 315,80 360,78 430,76"/>
+    <polyline class="chart-c" points="0,108 45,107 90,108 135,106 180,107 225,106 270,108 315,107 360,106 430,107"/>
+  </g>
+</svg>
