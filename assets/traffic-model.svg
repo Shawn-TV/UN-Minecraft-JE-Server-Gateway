@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+  <title id="title">UNMC Java Server Stack traffic model</title>
+  <desc id="desc">The Mac mini opens an SSH reverse tunnel to the relay VPS. Players connect to the relay, which forwards TCP traffic through the tunnel to the local Minecraft server.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#58a6ff"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3fb950"/>
+    </marker>
+    <style>
+      .bg { fill: #0d1117; }
+      .box { fill: #161b22; stroke: #30363d; stroke-width: 1.4; }
+      .title { fill: #e6edf3; font: 700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .label { fill: #e6edf3; font: 700 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .small { fill: #8b949e; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .line { stroke: #30363d; stroke-width: 2; stroke-dasharray: 6 8; }
+      .msg { fill: none; stroke: #58a6ff; stroke-width: 2.2; marker-end: url(#arrow); }
+      .return { fill: none; stroke: #3fb950; stroke-width: 2.2; marker-end: url(#arrow-green); stroke-dasharray: 8 7; }
+      .text { fill: #c9d1d9; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .code { fill: #e6edf3; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .pill { fill: #142238; stroke: #58a6ff; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="440" rx="18"/>
+  <text class="title" x="42" y="48">Traffic Model</text>
+  <text class="small" x="42" y="72">Public clients connect to the relay VPS; the Mac mini keeps the reverse tunnel open from inside the private network.</text>
+
+  <g transform="translate(70,105)">
+    <rect class="box" width="170" height="54" rx="10"/>
+    <text class="label" x="85" y="33" text-anchor="middle">Player</text>
+  </g>
+  <g transform="translate(350,105)">
+    <rect class="box" width="190" height="54" rx="10"/>
+    <text class="label" x="95" y="33" text-anchor="middle">Relay VPS</text>
+  </g>
+  <g transform="translate(665,105)">
+    <rect class="box" width="190" height="54" rx="10"/>
+    <text class="label" x="95" y="33" text-anchor="middle">Mac mini</text>
+  </g>
+  <g transform="translate(970,105)">
+    <rect class="box" width="170" height="54" rx="10"/>
+    <text class="label" x="85" y="33" text-anchor="middle">Minecraft JE</text>
+  </g>
+
+  <line class="line" x1="155" y1="159" x2="155" y2="364"/>
+  <line class="line" x1="445" y1="159" x2="445" y2="364"/>
+  <line class="line" x1="760" y1="159" x2="760" y2="364"/>
+  <line class="line" x1="1055" y1="159" x2="1055" y2="364"/>
+
+  <path class="msg" d="M760 184 L445 184"/>
+  <rect class="pill" x="500" y="166" width="205" height="28" rx="14"/>
+  <text class="code" x="602" y="185" text-anchor="middle">SSH -R :25565 → 127.0.0.1:25565</text>
+
+  <path class="msg" d="M155 246 L445 246"/>
+  <text class="text" x="300" y="235" text-anchor="middle">connect to play.example.com:25565</text>
+
+  <path class="msg" d="M445 286 L760 286"/>
+  <text class="text" x="602" y="275" text-anchor="middle">forward TCP through SSH tunnel</text>
+
+  <path class="msg" d="M760 326 L1055 326"/>
+  <text class="text" x="908" y="315" text-anchor="middle">local Minecraft traffic</text>
+
+  <path class="return" d="M1055 360 C810 398 410 398 155 360"/>
+  <text class="text" x="602" y="414" text-anchor="middle">game traffic returns through the same tunnel path</text>
+</svg>

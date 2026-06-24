@@ -36,43 +36,11 @@ It does **not** include:
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  Player["Players<br/>Minecraft Java Client"]
-  DNS["DNS<br/>play.example.com"]
-  Regional["Optional Regional Relay<br/>la.example.com"]
-  Primary["Primary Public Relay VPS<br/>SSH server + public TCP port"]
-  Mac["Mac mini<br/>Minecraft + Panel + Backups"]
-  MC["Minecraft Java Server<br/>Vanilla / Paper / Purpur"]
-  Panel["Local Web Panel<br/>127.0.0.1:8765"]
-  Backup["Local Backups<br/>backups/world"]
-
-  Player --> DNS
-  DNS --> Primary
-  Player --> Regional
-  Regional --> Primary
-  Primary -->|"SSH reverse tunnel"| Mac
-  Mac --> MC
-  Mac --> Panel
-  Panel --> MC
-  Panel --> Backup
-```
+<img src="assets/architecture.svg" alt="UNMC Java Server Stack architecture" width="100%">
 
 ### Traffic Model
 
-```mermaid
-sequenceDiagram
-  participant P as Player
-  participant R as Relay VPS
-  participant M as Mac mini
-  participant J as Minecraft JE
-
-  M->>R: SSH -R 0.0.0.0:25565:127.0.0.1:25565
-  P->>R: Connect to play.example.com:25565
-  R->>M: Forward TCP through SSH tunnel
-  M->>J: Local Minecraft traffic
-  J-->>P: Game traffic returns through the tunnel
-```
+<img src="assets/traffic-model.svg" alt="UNMC Java Server Stack traffic model" width="100%">
 
 ---
 
@@ -455,27 +423,7 @@ GPL-3.0. See [LICENSE](LICENSE).
 
 ## 架构
 
-```mermaid
-flowchart LR
-  Player["玩家<br/>Minecraft Java 客户端"]
-  DNS["域名<br/>play.example.com"]
-  Regional["可选地区入口<br/>la.example.com"]
-  Primary["主公网 VPS<br/>SSH + 公网 TCP 端口"]
-  Mac["Mac mini<br/>Minecraft + 面板 + 备份"]
-  MC["Minecraft Java Server<br/>Vanilla / Paper / Purpur"]
-  Panel["本地 Web 面板<br/>127.0.0.1:8765"]
-  Backup["本机备份<br/>backups/world"]
-
-  Player --> DNS
-  DNS --> Primary
-  Player --> Regional
-  Regional --> Primary
-  Primary -->|"SSH 反向隧道"| Mac
-  Mac --> MC
-  Mac --> Panel
-  Panel --> MC
-  Panel --> Backup
-```
+<img src="assets/architecture.svg" alt="UNMC Java Server Stack 架构图" width="100%">
 
 ---
 
