@@ -4,7 +4,7 @@
 [![Platform: macOS + Ubuntu](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu-lightgrey.svg)](#supported-platforms)
 [![Minecraft: Java Edition](https://img.shields.io/badge/Minecraft-Java%20Edition-62b47a.svg)](#what-this-project-is)
 
-The Mac mini + Beijing relay + Los Angeles accelerator + local web panel stack used by [unmcserver.com](https://unmcserver.com/) to host its Java Minecraft server.
+The Mac mini + public relay + optional acceleration server + local web panel stack used by [unmcserver.com](https://unmcserver.com/) to host its Java Minecraft server.
 
 This repository is not just a dashboard. It is a practical infrastructure pattern:
 
@@ -39,7 +39,8 @@ It does **not** include:
 The diagrams use the current public `unmcserver.com` Java Edition layout:
 
 - `playje.unmcserver.com` is the Beijing entry and main public relay.
-- `la.playje.unmcserver.com` is the Los Angeles accelerator for players who route better through LA.
+- `la.playje.unmcserver.com` is UNMC's current acceleration entry. An acceleration server can be in any region; it does not have to be Los Angeles.
+- UNMC uses Los Angeles because our LA server has a premium/dedicated route toward mainland China, which is much faster for many overseas players than a raw overseas-to-China connection.
 - The Mac mini still hosts the actual Minecraft world and the local panel.
 - Private IPs, keys, ports, logs, backups, and world data are intentionally not included.
 
@@ -105,9 +106,9 @@ Tested target:
 - Public IPv4 address.
 - DNS record pointing to the relay.
 
-Optional accelerator relay:
+Optional acceleration server:
 
-- Any VPS that can proxy TCP traffic to the main relay.
+- Any VPS or dedicated server that can proxy TCP traffic to the main relay.
 - Nginx stream module or another TCP proxy.
 
 ---
@@ -227,31 +228,33 @@ Create an `A` record:
 play.yourdomain.com -> your main relay VPS public IP
 ```
 
-For an optional accelerator relay:
+For an optional acceleration server:
 
 ```text
-la.play.yourdomain.com -> your accelerator VPS public IP
+acceleration.yourdomain.com -> your acceleration server public IP
 ```
 
 Then set:
 
 ```bash
-MC_ENTRY_HOSTS=play.yourdomain.com,la.play.yourdomain.com
+MC_ENTRY_HOSTS=play.yourdomain.com,acceleration.yourdomain.com
 ```
 
 The first host is treated as the main relay. Extra hosts are treated as accelerator entries.
 
 ---
 
-## Optional Los Angeles Accelerator
+## Optional Acceleration Server
 
-If you want a second entry point, put a TCP proxy on another VPS.
+If you want a second entry point, put a TCP proxy on another VPS or dedicated server. This server can be in any region: Los Angeles, Tokyo, Singapore, Frankfurt, or wherever your players get better routing.
 
 UNMC currently uses this public route shape:
 
 ```text
 Player -> la.playje.unmcserver.com -> Los Angeles accelerator -> Beijing relay -> SSH tunnel -> Mac mini -> Minecraft JE
 ```
+
+LA is not a requirement. It is just the current UNMC deployment choice: our LA server has a premium/dedicated route toward mainland China, so it can be much faster than letting overseas players connect to China over ordinary public internet routing.
 
 The direct Beijing route is:
 
@@ -262,7 +265,7 @@ Player -> playje.unmcserver.com -> Beijing relay -> SSH tunnel -> Mac mini -> Mi
 For your own deployment, the same pattern would look like:
 
 ```text
-Player -> la.play.yourdomain.com -> accelerator VPS -> play.yourdomain.com -> main relay VPS -> SSH tunnel -> Mac mini
+Player -> acceleration.yourdomain.com -> acceleration server -> play.yourdomain.com -> main relay VPS -> SSH tunnel -> Mac mini
 ```
 
 See:
@@ -271,7 +274,7 @@ See:
 templates/nginx-stream-regional-relay.example.conf
 ```
 
-This is useful when players in some regions get better routing through a nearby VPS, even though the final Minecraft server still runs on the Mac mini.
+This is useful when players in some regions get better routing through an acceleration server, even though the final Minecraft server still runs on the Mac mini.
 
 ---
 
@@ -444,7 +447,7 @@ GPL-3.0. See [LICENSE](LICENSE).
 
 这个项目不是单独的面板，也不是单独的脚本。它是一套完整思路：
 
-> Minecraft Java 服务器跑在 Mac mini 上；北京公网 VPS 负责主入口；Mac mini 主动连 VPS 建立 SSH 反向隧道；本地面板负责查看状态、日志、玩家、配置、插件和备份；如果需要，还可以加其他地区的 VPS 做入口加速。UNMC 当前的 LA 入口就是洛杉矶加速入口。
+> Minecraft Java 服务器跑在 Mac mini 上；北京公网 VPS 负责主入口；Mac mini 主动连 VPS 建立 SSH 反向隧道；本地面板负责查看状态、日志、玩家、配置、插件和备份；如果需要，还可以加一台可选加速服务器。加速服务器不一定要在 LA，UNMC 当前用 LA 是因为这台 LA 服务器到国内线路更好。
 
 ---
 
@@ -473,7 +476,8 @@ GPL-3.0. See [LICENSE](LICENSE).
 图里使用的是 `unmcserver.com` 当前公开 Java 服架构：
 
 - `playje.unmcserver.com` 是北京入口，也是主公网 relay。
-- `la.playje.unmcserver.com` 是洛杉矶加速入口，主要给海外玩家优化链路。
+- `la.playje.unmcserver.com` 是 UNMC 当前使用的加速入口。加速服务器可以在任何地区，不必须是洛杉矶。
+- UNMC 当前用洛杉矶，是因为这台 LA 服务器有到国内的专线/优化线路，对很多海外玩家来说会比直接从海外裸链进国内快很多。
 - 真正跑世界和面板的机器仍然是 Mac mini。
 - 私有 IP、密钥、端口、日志、备份和世界存档不会放进仓库。
 
@@ -637,13 +641,13 @@ play.yourdomain.com -> 主公网 VPS IP
 可选地区入口：
 
 ```text
-la.play.yourdomain.com -> 地区加速 VPS IP
+acceleration.yourdomain.com -> 可选加速服务器公网 IP
 ```
 
 `.env` 里写：
 
 ```bash
-MC_ENTRY_HOSTS=play.yourdomain.com,la.play.yourdomain.com
+MC_ENTRY_HOSTS=play.yourdomain.com,acceleration.yourdomain.com
 ```
 
 第一个域名会被当作主入口，后面的当作地区加速入口。
@@ -653,6 +657,12 @@ UNMC 当前公开参考架构是：
 ```text
 北京入口：playje.unmcserver.com -> 北京 relay -> SSH 反向隧道 -> Mac mini -> Minecraft JE
 LA 入口：la.playje.unmcserver.com -> 洛杉矶加速 VPS -> 北京 relay -> SSH 反向隧道 -> Mac mini -> Minecraft JE
+```
+
+这里的 LA 只是 UNMC 当前实例，不是项目要求。我们用 LA 的原因是这台洛杉矶服务器到国内有专线/优化线路，比海外玩家直接裸连国内入口稳定、快速很多。你自己的部署可以把加速服务器放在任意地区，例如：
+
+```text
+玩家 -> acceleration.yourdomain.com -> 加速服务器 -> play.yourdomain.com -> 主公网 VPS -> SSH 反向隧道 -> Mac mini
 ```
 
 ---
