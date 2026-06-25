@@ -1,5 +1,7 @@
 # UN-Minecraft-JE-Server-Gateway
 
+中文说明在后面：[点击跳到中文部分](#un-minecraft-je-server-gateway-中文说明)。
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform: macOS + Ubuntu](https://img.shields.io/badge/platform-macOS%20%2B%20Ubuntu-lightgrey.svg)](#supported-platforms)
 [![Minecraft: Java Edition](https://img.shields.io/badge/Minecraft-Java%20Edition-62b47a.svg)](#what-this-project-is)
