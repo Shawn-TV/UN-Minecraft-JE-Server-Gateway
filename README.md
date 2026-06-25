@@ -55,6 +55,8 @@ The diagrams use the current public `unmcserver.com` Java Edition layout:
 
 The screenshots below are captured from the local panel currently running on the UNMC Mac mini. Player names, log text, and backup file names are blurred or redacted before publishing; the UI, layout, logo, and controls are the live panel.
 
+Panel language: the current live panel UI is Chinese-only.
+
 ### Overview
 
 <img src="assets/screenshots/panel-overview.png" alt="Live panel overview with server status, tunnel status, latency and storage metrics" width="100%">
@@ -482,6 +484,8 @@ GPL-3.0. See [LICENSE](LICENSE).
 ## 面板截图
 
 下面的截图直接来自 UNMC Mac mini 本机正在运行的面板。玩家名、日志正文和备份文件名在发布前做了模糊或隐藏；UI、布局、logo 和控件是当前实机版本。
+
+面板语言：当前实机面板界面只有中文。
 
 ### 运行总览
 
