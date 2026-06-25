@@ -29,8 +29,6 @@ It does **not** include:
 - Minecraft server jar files.
 - Minecraft world saves.
 - Plugin jar files.
-- SSH keys.
-- Production IPs, passwords, logs, backups, or private deployment data.
 
 ---
 
@@ -42,7 +40,6 @@ The diagrams use the current public `unmcserver.com` Java Edition layout:
 - `la.playje.unmcserver.com` is UNMC's current acceleration entry. An acceleration server can be in any region; it does not have to be Los Angeles.
 - UNMC uses Los Angeles because our LA server has a premium/dedicated route toward mainland China, which is much faster for many overseas players than a raw overseas-to-China connection.
 - The Mac mini still hosts the actual Minecraft world and the local panel.
-- Private IPs, keys, ports, logs, backups, and world data are intentionally not included.
 
 <img src="assets/architecture.png" alt="UN-Minecraft-JE-Server-Gateway architecture" width="100%">
 
@@ -409,7 +406,7 @@ This stack uses or integrates with:
 - Optional [Nginx](https://nginx.org/) stream proxy - regional accelerator relay.
 - Optional Paper or Purpur server jars - compatible server implementations, not bundled.
 
-No Minecraft server jar, plugin jar, world save, key, or private deployment artifact is included in this repository.
+No Minecraft server jar, plugin jar, or world save is included in this repository.
 
 ---
 
@@ -466,8 +463,6 @@ GPL-3.0. See [LICENSE](LICENSE).
 - Minecraft 服务端 jar。
 - 世界存档。
 - 插件 jar。
-- SSH 密钥。
-- 生产 IP、密码、日志、备份和私有配置。
 
 ---
 
@@ -479,7 +474,6 @@ GPL-3.0. See [LICENSE](LICENSE).
 - `la.playje.unmcserver.com` 是 UNMC 当前使用的加速入口。加速服务器可以在任何地区，不必须是洛杉矶。
 - UNMC 当前用洛杉矶，是因为这台 LA 服务器有到国内的专线/优化线路，对很多海外玩家来说会比直接从海外裸链进国内快很多。
 - 真正跑世界和面板的机器仍然是 Mac mini。
-- 私有 IP、密钥、端口、日志、备份和世界存档不会放进仓库。
 
 <img src="assets/architecture.png" alt="UN-Minecraft-JE-Server-Gateway 架构图" width="100%">
 
@@ -750,7 +744,7 @@ Ctrl-A，然后 D
 - 可选 Nginx stream。
 - 可选 Paper / Purpur 服务端。
 
-本仓库不内置 Minecraft jar、插件 jar、世界存档、密钥和生产配置。
+本仓库不内置 Minecraft jar、插件 jar 和世界存档。
 
 ---
 
