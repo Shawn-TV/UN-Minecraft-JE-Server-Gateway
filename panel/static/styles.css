@@ -773,14 +773,6 @@ select:focus {
   letter-spacing: 0;
 }
 
-.section-head p {
-  max-width: 560px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-  text-align: right;
-}
-
 .section-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -3620,11 +3612,6 @@ select:focus {
     gap: 4px;
   }
 
-  .section-head p {
-    max-width: none;
-    text-align: left;
-  }
-
   .section-head h1 {
     font-size: 24px;
   }
@@ -4151,15 +4138,6 @@ select:focus {
 .section-head h1 {
   grid-column: 1;
   font-size: clamp(22px, 2.1vw, 30px);
-}
-
-.section-head p {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  max-width: 360px;
-  align-self: end;
-  font-size: 12px;
-  line-height: 1.45;
 }
 
 .calm-grid {
@@ -5076,13 +5054,6 @@ select:focus {
 
   .section-head {
     grid-template-columns: 1fr;
-  }
-
-  .section-head p {
-    grid-column: 1;
-    grid-row: auto;
-    max-width: none;
-    text-align: left;
   }
 
   .calm-card {

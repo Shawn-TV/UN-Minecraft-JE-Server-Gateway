@@ -1488,13 +1488,12 @@ function renderPanelCard(type, options = {}) {
   `;
 }
 
-function renderPanelSection(id, title, subtitle, body, className = "") {
+function renderPanelSection(id, title, body, className = "") {
   return `
     <section id="${escapeHTML(id)}" class="panel-section section-${escapeHTML(id)} ${escapeHTML(className)}">
       <div class="section-head">
         <span>UN 控制台</span>
         <h1>${escapeHTML(title)}</h1>
-        <p>${escapeHTML(subtitle)}</p>
       </div>
       <div class="section-body">${body}</div>
     </section>
@@ -1947,7 +1946,6 @@ function renderOverviewSection(data) {
   return renderPanelSection(
     "overview",
     "运行状态",
-    "先看能不能进服，再看延迟和机器状态",
     `
       <div class="overview-layout">
         <div class="overview-column">
@@ -1974,7 +1972,6 @@ function renderPlayersSection(data) {
   return renderPanelSection(
     "players",
     "玩家数据",
-    "当前在线、上线记录和世界统计",
     `
       <div class="calm-grid calm-grid-two">
         ${renderCalmCard("在线与历史", "玩家", playerBody, "span-6")}
@@ -1996,7 +1993,6 @@ function renderControlSection(data) {
   return renderPanelSection(
     "control",
     "终端命令",
-    "日志和命令放在一起，避免来回找",
     `
       <div class="calm-grid calm-grid-two">
         ${renderCalmCard("服务器终端", "控制", terminalBody, "span-12 terminal-card")}
@@ -2015,7 +2011,6 @@ function renderConfigSection(data) {
   return renderPanelSection(
     "config",
     "设置与备份",
-    "改规则、开关插件、管理本机自动备份",
     `
       <div class="calm-grid calm-grid-two">
         ${renderCalmCard("重启生效", "保存后提示", renderRestartGuide(data), "span-12")}
