@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import gzip
+import datetime as dt
 import json
 import mimetypes
 import os
 import re
 import socket
+import sqlite3
 import struct
 import subprocess
 import threading
@@ -21,6 +24,7 @@ SERVER_LOG = ROOT / "server" / "logs" / "latest.log"
 TUNNEL_LOG = ROOT / "logs" / "tunnel-loop.log"
 BACKUP_DIR = ROOT / "backups" / "world"
 BACKUP_CONFIG = ROOT / "panel" / "backup-config.json"
+FPP_DB = ROOT / "server" / "plugins" / "FakePlayerPlugin" / "data" / "fpp.db"
 HOST = os.environ.get("PANEL_HOST", "127.0.0.1")
 PORT = int(os.environ.get("PANEL_PORT", "8765"))
 SLOW_STATS_CACHE = {"at": 0.0, "data": {}}
@@ -47,6 +51,8 @@ DEFAULT_BACKUP_CONFIG = {
     "last_error": "",
     "last_file": "",
 }
+SERVER_LOG_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})-(\d+)\.log(?:\.gz)?$")
+LOG_TIME_RE = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\]")
 SENSITIVE_PROPERTY_KEYS = {
     "rcon.password",
     "management-server-secret",
@@ -110,6 +116,130 @@ def read_tail(path: Path, lines: int = 160, max_bytes: int = 240_000) -> str:
         data = handle.read()
     text = data.decode("utf-8", errors="replace")
     return "\n".join(text.splitlines()[-lines:])
+
+
+def server_log_sort_key(path: Path):
+    match = SERVER_LOG_RE.match(path.name)
+    if not match:
+        return ("0000", "00", "00", 0, 0.0)
+    year, month, day, index = match.groups()
+    return (year, month, day, int(index), path.stat().st_mtime)
+
+
+def log_sources(target: str) -> list[Path]:
+    if target != "server":
+        return [TUNNEL_LOG] if TUNNEL_LOG.exists() else []
+    sources = [SERVER_LOG] if SERVER_LOG.exists() else []
+    rotated = []
+    log_dir = SERVER_LOG.parent
+    if log_dir.exists():
+        for path in log_dir.iterdir():
+            if path.name == SERVER_LOG.name or not path.is_file():
+                continue
+            if path.stat().st_size <= 0 or not SERVER_LOG_RE.match(path.name):
+                continue
+            rotated.append(path)
+    sources.extend(sorted(rotated, key=server_log_sort_key, reverse=True))
+    return sources
+
+
+def read_log_lines(path: Path) -> list[str]:
+    if not path.exists() or path.stat().st_size <= 0:
+        return []
+    try:
+        if path.name.endswith(".gz"):
+            with gzip.open(path, "rt", encoding="utf-8", errors="replace") as handle:
+                return handle.read().splitlines()
+        return path.read_text(errors="replace").splitlines()
+    except (OSError, gzip.BadGzipFile, UnicodeDecodeError):
+        return []
+
+
+def log_source_date(path: Path) -> str:
+    match = SERVER_LOG_RE.match(path.name)
+    if match:
+        year, month, day, _index = match.groups()
+        return f"{year}-{month}-{day}"
+    if path.exists():
+        return time.strftime("%Y-%m-%d", time.localtime(path.stat().st_mtime))
+    return "unknown"
+
+
+def log_date_divider(date_text: str) -> str:
+    return f"──────── {date_text} ────────"
+
+
+def parse_log_cursor(value: str):
+    try:
+        index_text, line_text = value.split(":", 1)
+        return max(0, int(index_text)), max(0, int(line_text))
+    except (AttributeError, ValueError):
+        return None
+
+
+def read_log_window(target: str, lines: int = 1000, cursor: str = "") -> dict:
+    sources = log_sources(target)
+    if not sources:
+        return {"target": target, "lines": lines, "text": "", "cursor": "", "has_more": False, "returned": 0}
+
+    parsed_cursor = parse_log_cursor(cursor)
+    source_index = parsed_cursor[0] if parsed_cursor else 0
+    end_line = parsed_cursor[1] if parsed_cursor else None
+    if end_line == 0:
+        source_index += 1
+        end_line = None
+
+    remaining = min(max(lines, 20), 1000)
+    segments = []
+    earliest_index = source_index
+    earliest_line = 0
+    has_more = False
+
+    while remaining > 0 and source_index < len(sources):
+        file_lines = read_log_lines(sources[source_index])
+        end = len(file_lines) if end_line is None else min(end_line, len(file_lines))
+        if end > 0:
+            start = max(0, end - remaining)
+            chunk = file_lines[start:end]
+            if chunk:
+                segments.append((source_index, start, chunk))
+                remaining -= len(chunk)
+                earliest_index = source_index
+                earliest_line = start
+                if start > 0:
+                    has_more = True
+                    break
+        source_index += 1
+        end_line = None
+
+    if not has_more:
+        has_more = earliest_index + 1 < len(sources)
+
+    ordered_segments = list(reversed(segments))
+    ordered_lines = []
+    last_date = ""
+    returned = 0
+    for index, _start, chunk in ordered_segments:
+        date_text = log_source_date(sources[index])
+        if date_text != last_date:
+            ordered_lines.append(log_date_divider(date_text))
+            last_date = date_text
+        ordered_lines.extend(chunk)
+        returned += len(chunk)
+
+    start_date = log_source_date(sources[ordered_segments[0][0]]) if ordered_segments else ""
+    end_date = log_source_date(sources[ordered_segments[-1][0]]) if ordered_segments else ""
+
+    return {
+        "target": target,
+        "lines": lines,
+        "text": "\n".join(ordered_lines),
+        "cursor": f"{earliest_index}:{earliest_line}" if segments else "",
+        "has_more": has_more,
+        "returned": returned,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
 
 
 def read_from(path: Path, start: int, max_bytes: int = 80_000) -> str:
@@ -671,6 +801,67 @@ def leaderboard(rows: list[dict], key: str, limit: int = 5) -> list[dict]:
     ]
 
 
+def fake_player_summary() -> dict:
+    empty = {
+        "known": 0,
+        "active": 0,
+        "sessions": 0,
+        "stat_players": 0,
+        "unique_stat_players": 0,
+        "play_hours": 0,
+        "distance_km": 0,
+        "names": [],
+        "active_names": [],
+        "uuids": [],
+        "source": "FakePlayerPlugin",
+    }
+    if not FPP_DB.exists():
+        return empty
+
+    try:
+        connection = sqlite3.connect(f"file:{FPP_DB}?mode=ro", uri=True, timeout=2)
+        connection.row_factory = sqlite3.Row
+        try:
+            identities = [dict(row) for row in connection.execute("select bot_name, bot_uuid from fpp_bot_identities")]
+            active = [dict(row) for row in connection.execute("select bot_name, bot_uuid from fpp_active_bots")]
+            sessions = connection.execute("select count(*) from fpp_bot_sessions").fetchone()[0]
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return empty
+
+    names = {}
+    uuids = set()
+    active_names = {}
+    for row in identities + active:
+        name = row.get("bot_name")
+        uuid = row.get("bot_uuid")
+        if name:
+            names[name.lower()] = name
+        if uuid:
+            uuids.add(uuid)
+    for row in active:
+        name = row.get("bot_name")
+        if name:
+            active_names[name.lower()] = name
+
+    return {
+        **empty,
+        "known": len(names),
+        "active": len(active_names),
+        "sessions": int(sessions or 0),
+        "names": sorted(names.values(), key=str.lower),
+        "active_names": sorted(active_names.values(), key=str.lower),
+        "uuids": sorted(uuids),
+    }
+
+
+def fake_player_match(name: str, uuid: str, fake: dict) -> bool:
+    fake_names = {value.lower() for value in fake.get("names", [])}
+    fake_uuids = set(fake.get("uuids", []))
+    return (name or "").lower() in fake_names or bool(uuid and uuid in fake_uuids)
+
+
 def movement_cm(custom: dict) -> int:
     keys = [
         "minecraft:walk_one_cm",
@@ -705,12 +896,19 @@ def advancement_count(path: Path) -> int:
 
 def player_stat_summary() -> dict:
     names = player_names()
+    fake = fake_player_summary()
     stats_dir = ROOT / "server" / "world" / "players" / "stats"
     advancements_dir = ROOT / "server" / "world" / "players" / "advancements"
     rows = []
+    fake_rows = []
     mined_items = {}
     crafted_items = {}
     used_items = {}
+    known_real = {
+        uuid: name
+        for uuid, name in names.items()
+        if not fake_player_match(name, uuid, fake)
+    }
 
     for path in sorted(stats_dir.glob("*.json")) if stats_dir.exists() else []:
         uuid = path.stem
@@ -722,6 +920,31 @@ def player_stat_summary() -> dict:
         killed = stats.get("minecraft:killed", {})
         killed_by = stats.get("minecraft:killed_by", {})
 
+        play_ticks = int(custom.get("minecraft:play_time", 0))
+        distance = movement_cm(custom)
+        advancements = advancement_count(advancements_dir / f"{uuid}.json")
+        player_name = names.get(uuid, short_id(uuid))
+        row = {
+            "uuid": uuid,
+            "name": player_name,
+            "play_hours": round(play_ticks / 20 / 3600, 1),
+            "deaths": int(custom.get("minecraft:deaths", 0)),
+            "mob_kills": int(custom.get("minecraft:mob_kills", 0)),
+            "player_kills": int(custom.get("minecraft:player_kills", 0)),
+            "jumps": int(custom.get("minecraft:jump", 0)),
+            "damage_dealt": int(custom.get("minecraft:damage_dealt", 0)),
+            "distance_km": round(distance / 100_000, 1),
+            "blocks_mined": sum(int(value) for value in mined.values()),
+            "items_crafted": sum(int(value) for value in crafted.values()),
+            "items_used": sum(int(value) for value in used.values()),
+            "entities_killed": sum(int(value) for value in killed.values()),
+            "killed_by": sum(int(value) for value in killed_by.values()),
+            "advancements": advancements,
+        }
+        if fake_player_match(player_name, uuid, fake):
+            fake_rows.append(row)
+            continue
+        rows.append(row)
         for key, value in mined.items():
             mined_items[key] = mined_items.get(key, 0) + int(value)
         for key, value in crafted.items():
@@ -729,30 +952,6 @@ def player_stat_summary() -> dict:
         for key, value in used.items():
             used_items[key] = used_items.get(key, 0) + int(value)
 
-        play_ticks = int(custom.get("minecraft:play_time", 0))
-        distance = movement_cm(custom)
-        advancements = advancement_count(advancements_dir / f"{uuid}.json")
-        rows.append(
-            {
-                "uuid": uuid,
-                "name": names.get(uuid, short_id(uuid)),
-                "play_hours": round(play_ticks / 20 / 3600, 1),
-                "deaths": int(custom.get("minecraft:deaths", 0)),
-                "mob_kills": int(custom.get("minecraft:mob_kills", 0)),
-                "player_kills": int(custom.get("minecraft:player_kills", 0)),
-                "jumps": int(custom.get("minecraft:jump", 0)),
-                "damage_dealt": int(custom.get("minecraft:damage_dealt", 0)),
-                "distance_km": round(distance / 100_000, 1),
-                "blocks_mined": sum(int(value) for value in mined.values()),
-                "items_crafted": sum(int(value) for value in crafted.values()),
-                "items_used": sum(int(value) for value in used.values()),
-                "entities_killed": sum(int(value) for value in killed.values()),
-                "killed_by": sum(int(value) for value in killed_by.values()),
-                "advancements": advancements,
-            }
-        )
-
-    merged = {}
     numeric_keys = [
         "play_hours",
         "deaths",
@@ -768,14 +967,29 @@ def player_stat_summary() -> dict:
         "killed_by",
         "advancements",
     ]
-    for row in rows:
-        target = merged.setdefault(row["name"], {"uuid": row["uuid"], "name": row["name"]})
-        for key in numeric_keys:
-            target[key] = target.get(key, 0) + row.get(key, 0)
-    merged_rows = list(merged.values())
-    for row in merged_rows:
-        row["play_hours"] = round(row.get("play_hours", 0), 1)
-        row["distance_km"] = round(row.get("distance_km", 0), 1)
+
+    def merged_player_rows(source_rows: list[dict]) -> list[dict]:
+        merged = {}
+        for row in source_rows:
+            target = merged.setdefault(row["name"], {"uuid": row["uuid"], "name": row["name"]})
+            for key in numeric_keys:
+                target[key] = target.get(key, 0) + row.get(key, 0)
+        merged_rows = list(merged.values())
+        for row in merged_rows:
+            row["play_hours"] = round(row.get("play_hours", 0), 1)
+            row["distance_km"] = round(row.get("distance_km", 0), 1)
+        return merged_rows
+
+    merged_rows = merged_player_rows(rows)
+    fake_merged_rows = merged_player_rows(fake_rows)
+    fake.update(
+        {
+            "stat_players": len(fake_rows),
+            "unique_stat_players": len(fake_merged_rows),
+            "play_hours": round(sum(row["play_hours"] for row in fake_rows), 1),
+            "distance_km": round(sum(row["distance_km"] for row in fake_rows), 1),
+        }
+    )
 
     def top_item(items: dict) -> dict:
         if not items:
@@ -785,9 +999,12 @@ def player_stat_summary() -> dict:
 
     return {
         "totals": {
-            "known_players": len(names),
+            "known_players": len(known_real),
+            "known_players_with_fake": len(names),
             "stat_players": len(rows),
             "unique_stat_players": len(merged_rows),
+            "stat_players_with_fake": len(rows) + len(fake_rows),
+            "unique_stat_players_with_fake": len(merged_rows) + len(fake_merged_rows),
             "play_hours": round(sum(row["play_hours"] for row in rows), 1),
             "deaths": sum(row["deaths"] for row in rows),
             "mob_kills": sum(row["mob_kills"] for row in rows),
@@ -805,6 +1022,8 @@ def player_stat_summary() -> dict:
             "mob_kills": leaderboard(merged_rows, "mob_kills"),
             "advancements": leaderboard(merged_rows, "advancements"),
         },
+        "all": sorted(merged_rows, key=lambda row: row.get("name", "").lower()),
+        "fake": fake,
         "items": {
             "most_mined": top_item(mined_items),
             "most_crafted": top_item(crafted_items),
@@ -813,47 +1032,192 @@ def player_stat_summary() -> dict:
     }
 
 
-def log_activity_summary() -> dict:
-    text = read_tail(SERVER_LOG, lines=900, max_bytes=900_000)
-    joined = []
-    left = []
+def log_source_base_date(path: Path) -> dt.date:
+    try:
+        return dt.datetime.strptime(log_source_date(path), "%Y-%m-%d").date()
+    except ValueError:
+        return dt.datetime.now().date()
+
+
+def dated_log_lines(path: Path) -> list[dict]:
+    lines = read_log_lines(path)
+    if not lines:
+        return []
+    current_date = log_source_base_date(path)
+    later_seconds = None
+    stamped = []
+    for line in reversed(lines):
+        match = LOG_TIME_RE.match(line)
+        if not match:
+            stamped.append({"line": line, "timestamp": None})
+            continue
+        hour, minute, second = [int(part) for part in match.groups()]
+        seconds = hour * 3600 + minute * 60 + second
+        if later_seconds is not None and seconds > later_seconds:
+            current_date = current_date - dt.timedelta(days=1)
+        timestamp = dt.datetime.combine(current_date, dt.time(hour, minute, second)).timestamp()
+        stamped.append({"line": line, "timestamp": timestamp})
+        later_seconds = seconds
+    return list(reversed(stamped))
+
+
+def log_time_text(timestamp: float) -> str:
+    return time.strftime("%H:%M:%S", time.localtime(timestamp))
+
+
+def log_datetime_text(timestamp: float) -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
+
+
+def recent_log_events(cutoff_ts: float) -> tuple[list[dict], list[dict]]:
+    cutoff_date = dt.datetime.fromtimestamp(cutoff_ts).date() - dt.timedelta(days=1)
     events = []
     chat = []
-    for line in text.splitlines():
-        join_match = re.search(r"\]: ([A-Za-z0-9_]{3,16}) joined the game", line)
-        left_match = re.search(r"\]: ([A-Za-z0-9_]{3,16}) left the game", line)
-        chat_match = re.search(r"\]: <([^>]+)> (.+)$", line)
-        if join_match:
-            event = {"line": line, "name": join_match.group(1), "type": "join"}
-            joined.append(event)
-            events.append(event)
-        if left_match:
-            event = {"line": line, "name": left_match.group(1), "type": "left"}
-            left.append(event)
-            events.append(event)
-        if chat_match:
-            chat.append({"line": line, "name": chat_match.group(1), "message": chat_match.group(2)})
+    for source in reversed(log_sources("server")):
+        if source != SERVER_LOG and log_source_base_date(source) < cutoff_date:
+            continue
+        for stamped in dated_log_lines(source):
+            line = stamped["line"]
+            timestamp = stamped["timestamp"]
+            if timestamp is None:
+                continue
+            join_match = re.search(r"\]: ([A-Za-z0-9_]{3,16}) joined the game", line)
+            left_match = re.search(r"\]: ([A-Za-z0-9_]{3,16}) left the game", line)
+            chat_match = re.search(r"\]: <([^>]+)> (.+)$", line)
+            if join_match:
+                events.append(
+                    {
+                        "line": line,
+                        "name": join_match.group(1),
+                        "type": "join",
+                        "timestamp": timestamp,
+                        "time": log_time_text(timestamp),
+                        "datetime": log_datetime_text(timestamp),
+                    }
+                )
+            if left_match:
+                events.append(
+                    {
+                        "line": line,
+                        "name": left_match.group(1),
+                        "type": "left",
+                        "timestamp": timestamp,
+                        "time": log_time_text(timestamp),
+                        "datetime": log_datetime_text(timestamp),
+                    }
+                )
+            if chat_match and timestamp >= cutoff_ts:
+                chat.append({"line": line, "name": chat_match.group(1), "message": chat_match.group(2), "timestamp": timestamp})
+    events.sort(key=lambda event: event.get("timestamp", 0))
+    chat.sort(key=lambda event: event.get("timestamp", 0))
+    return events, chat
+
+
+def log_activity_summary(player_rows: list[dict] | None = None, fake: dict | None = None) -> dict:
+    fake = fake or {}
+    now_ts = time.time()
+    cutoff_ts = now_ts - 86400
+    events, chat = recent_log_events(cutoff_ts)
+    joined = [event for event in events if event["type"] == "join"]
+    real_events = [event for event in events if not fake_player_match(event["name"], "", fake)]
+    real_joined = [event for event in real_events if event["type"] == "join"]
+    joined_24h = [event for event in real_joined if event["timestamp"] >= cutoff_ts]
+    today_start = dt.datetime.combine(dt.datetime.now().date(), dt.time()).timestamp()
+    today_joined = [event for event in real_joined if event["timestamp"] >= today_start]
 
     online = []
-    for event in events:
+    open_since = {}
+    session_seconds = {}
+    for event in real_events:
         name = event["name"]
-        if event["type"] == "join" and name not in online:
-            online.append(name)
-        if event["type"] == "left" and name in online:
-            online.remove(name)
+        timestamp = float(event["timestamp"])
+        if event["type"] == "join":
+            if name not in online:
+                online.append(name)
+            open_since[name] = timestamp
+        elif event["type"] == "left":
+            if name in online:
+                online.remove(name)
+            start = open_since.pop(name, None)
+            if timestamp >= cutoff_ts:
+                session_start = max(start if start is not None else cutoff_ts, cutoff_ts)
+                session_seconds[name] = session_seconds.get(name, 0) + max(0, timestamp - session_start)
+    for name, start in open_since.items():
+        session_seconds[name] = session_seconds.get(name, 0) + max(0, now_ts - max(start, cutoff_ts))
 
-    current_day = time.strftime("%Y-%m-%d")
-    today_joined = [event for event in joined if current_day in event["line"] or re.match(r"\[\d{2}:\d{2}:\d{2}\]", event["line"])]
-    recent = list(reversed(joined[-8:]))
+    playtime_by_name = {}
+    for row in player_rows or []:
+        name = row.get("name")
+        if name:
+            playtime_by_name[name.lower()] = round(float(row.get("play_hours") or 0), 1)
+
+    players_24h = {}
+    for event in joined_24h:
+        name = event["name"]
+        row = players_24h.setdefault(
+            name,
+            {
+                "name": name,
+                "join_events": 0,
+                "first_join_at": event["datetime"],
+                "last_join_at": event["datetime"],
+                "first_join_time": event["time"],
+                "last_join_time": event["time"],
+                "last_line": event["line"],
+                "play_hours": playtime_by_name.get(name.lower(), 0),
+                "session_minutes_24h": 0,
+            },
+        )
+        row["join_events"] += 1
+        row["last_join_at"] = event["datetime"]
+        row["last_join_time"] = event["time"]
+        row["last_line"] = event["line"]
+        row["_sort_ts"] = event["timestamp"]
+
+    for name, seconds in session_seconds.items():
+        if seconds <= 0 and name not in players_24h:
+            continue
+        row = players_24h.setdefault(
+            name,
+            {
+                "name": name,
+                "join_events": 0,
+                "first_join_at": "",
+                "last_join_at": "",
+                "first_join_time": "",
+                "last_join_time": "",
+                "last_line": "",
+                "play_hours": playtime_by_name.get(name.lower(), 0),
+                "session_minutes_24h": 0,
+                "_sort_ts": 0,
+            },
+        )
+        row["session_minutes_24h"] = int(round(seconds / 60))
+        row["session_hours_24h"] = round(seconds / 3600, 1)
+        row["online"] = name in online
+
+    player_list = sorted(players_24h.values(), key=lambda row: (row.get("_sort_ts", 0), row.get("session_minutes_24h", 0)), reverse=True)
+    for row in player_list:
+        row.pop("_sort_ts", None)
+
+    recent = list(reversed(real_joined[-8:]))
     return {
         "since_start": {
-            "join_events": len(joined),
-            "unique_joined": len({event["name"] for event in joined}),
+            "join_events": len(real_joined),
+            "unique_joined": len({event["name"] for event in real_joined}),
             "currently_online_names": online,
         },
         "today": {
             "join_events": len(today_joined),
             "unique_joined": len({event["name"] for event in today_joined}),
+        },
+        "last_24h": {
+            "window_hours": 24,
+            "join_events": len(joined_24h),
+            "unique_joined": len({event["name"] for event in joined_24h}),
+            "players": player_list,
+            "since": log_datetime_text(cutoff_ts),
+            "excludes_fake_players": True,
         },
         "recent_joins": recent,
         "last_chat": chat[-5:],
@@ -880,6 +1244,7 @@ def slow_stats() -> dict:
         ROOT / "server" / "world" / "advancements",
         ROOT / "server" / "world" / "players" / "advancements",
     ]
+    player_stats = player_stat_summary()
     data = {
         "disk": {
             "server": server_usage,
@@ -898,8 +1263,8 @@ def slow_stats() -> dict:
             "jars": len(list(plugins_dir.glob("*.jar"))) if plugins_dir.exists() else 0,
             "files": plugin_inventory(),
         },
-        "players": player_stat_summary(),
-        "activity": log_activity_summary(),
+        "players": player_stats,
+        "activity": log_activity_summary(player_stats.get("all", []), player_stats.get("fake", {})),
     }
     SLOW_STATS_CACHE["at"] = now
     SLOW_STATS_CACHE["data"] = data
@@ -1276,9 +1641,12 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/logs":
             query = parse_qs(parsed.query)
             target = query.get("target", ["server"])[0]
-            lines = min(max(int(query.get("lines", ["160"])[0]), 20), 800)
-            path = SERVER_LOG if target == "server" else TUNNEL_LOG
-            self.write_json({"target": target, "text": read_tail(path, lines=lines)})
+            try:
+                lines = int(query.get("lines", ["1000"])[0])
+            except (TypeError, ValueError):
+                lines = 1000
+            cursor = query.get("cursor", [""])[0]
+            self.write_json(read_log_window(target, lines=lines, cursor=cursor))
             return
         self.send_error(404)
 

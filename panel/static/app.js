@@ -9,6 +9,9 @@ const BACKUP_REFRESH_MS = 1400;
 const BACKUP_NOTICE_MS = 5200;
 const STATUS_TIMEOUT_MS = 16000;
 const ACTION_TIMEOUT_MS = 120000;
+const LOG_BOTTOM_THRESHOLD = 34;
+const LOG_TOP_THRESHOLD = 28;
+const LOG_CHUNK_LINES = 1000;
 
 if ("scrollRestoration" in history) {
   history.scrollRestoration = "manual";
@@ -19,10 +22,19 @@ const state = {
   editing: false,
   interaction: null,
   logTarget: "server",
+  logCursor: { server: "", tunnel: "" },
+  logHasMore: { server: false, tunnel: false },
+  logStartDate: { server: "", tunnel: "" },
+  logLoadingOlder: false,
+  logHistoryError: "",
   latencyHistory: [],
   latestData: null,
   latestLogs: "",
   activeView: "overview",
+  logScroll: {
+    server: { pinned: true, top: 0 },
+    tunnel: { pinned: true, top: 0 },
+  },
   restartPending: localStorage.getItem(RESTART_STORAGE_KEY) === "true",
   backupWasRunning: false,
   backupNoticeUntil: 0,
@@ -49,6 +61,8 @@ let initialScrollDeadline = Date.now() + 1800;
 let initialDataRendered = false;
 let backupPollTimer = 0;
 let backupNoticeTimer = 0;
+let logOlderLoadTimer = 0;
+let restoringLogScroll = false;
 
 const endpointMeta = {
   "127.0.0.1": {
@@ -423,6 +437,29 @@ function escapeHTML(value) {
     .replaceAll("'", "&#39;");
 }
 
+function logDateDivider(dateText) {
+  return `──────── ${dateText} ────────`;
+}
+
+function isLogDateDivider(line) {
+  return /^──────── \d{4}-\d{2}-\d{2} ────────$/.test(line);
+}
+
+function renderLogText(text) {
+  return String(text || "")
+    .split("\n")
+    .map((line) => isLogDateDivider(line)
+      ? `<span class="log-date-divider">${escapeHTML(line)}</span>`
+      : escapeHTML(line))
+    .join("\n");
+}
+
+function stripLeadingLogDateDivider(text, dateText) {
+  if (!dateText) return text;
+  const lines = String(text || "").split("\n");
+  return lines[0] === logDateDivider(dateText) ? lines.slice(1).join("\n") : text;
+}
+
 function formatPercent(value) {
   if (value === undefined || value === null) return "--";
   return `${Number(value).toFixed(1)}%`;
@@ -451,11 +488,78 @@ function javaMemoryDetail(data, java) {
   return "Java RSS";
 }
 
+function javaMemoryMeterValue(data, java) {
+  if (!java.rss_mb) return "--";
+  return `${formatMemoryMB(java.rss_mb)} / ${formatPercent(javaMemoryPercent(data, java))}`;
+}
+
+function javaMemoryMeterSubtext(data) {
+  const total = Number(data.stats?.system?.memory_mb || 0);
+  return total ? `全机 ${formatMemoryMB(total)}` : "";
+}
+
 function compactNumber(value) {
   const number = Number(value || 0);
   if (number >= 1_000_000) return `${(number / 1_000_000).toFixed(1)}M`;
   if (number >= 10_000) return `${Math.round(number / 1000)}K`;
   return String(number);
+}
+
+function formatPlayerMinutes(value) {
+  const minutes = Number(value || 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) return "少于1分钟";
+  if (minutes < 60) return `${Math.round(minutes)}分钟`;
+  const hours = minutes / 60;
+  return `${hours.toFixed(hours >= 10 ? 0 : 1)}小时`;
+}
+
+function formatPlayerHours(value) {
+  const hours = Number(value || 0);
+  if (!Number.isFinite(hours) || hours <= 0) return "--";
+  return `${hours.toFixed(hours >= 10 ? 0 : 1)}h`;
+}
+
+function formatEtime(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "--";
+
+  let days = 0;
+  let timePart = raw;
+  if (raw.includes("-")) {
+    const pieces = raw.split("-");
+    days = Number(pieces[0]);
+    timePart = pieces.slice(1).join("-");
+  }
+
+  const parts = timePart.split(":").map((part) => Number(part));
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+  if (parts.length === 3) {
+    [hours, minutes, seconds] = parts;
+  } else if (parts.length === 2) {
+    [minutes, seconds] = parts;
+  } else if (parts.length === 1) {
+    [seconds] = parts;
+  } else {
+    return raw;
+  }
+
+  if (![days, hours, minutes, seconds].every(Number.isFinite)) return raw;
+  const chunks = [];
+  if (days) chunks.push(`${days}天`);
+  if (hours || chunks.length) chunks.push(`${hours}小时`);
+  if (minutes || chunks.length) chunks.push(`${minutes}分钟`);
+  chunks.push(`${seconds}秒`);
+  return chunks.join("");
+}
+
+function last24hMinutes(activity) {
+  return (activity?.last_24h?.players || []).reduce((total, player) => total + Number(player.session_minutes_24h || 0), 0);
+}
+
+function fakeNameSet(data) {
+  return new Set((data.stats?.players?.fake?.names || []).map((name) => String(name).toLowerCase()));
 }
 
 function feedbackTime() {
@@ -944,7 +1048,7 @@ function renderStatusWidget(data) {
     <div class="mini-grid">
       ${metricCard("玩家", local.ok ? `${local.online}/${local.max}` : "--/--", loading ? "等待采样" : local.version || "本地状态异常")}
       ${metricCard("难度", props.difficulty || "--", `模式 ${props.gamemode || "--"}`)}
-      ${metricCard("运行", java.etime || "--", "JE uptime")}
+      ${metricCard("运行", formatEtime(java.etime), "JE 运行时长", "mini-wide")}
       ${metricCard("连接", data.stats?.connections?.established ?? "--", "TCP established")}
     </div>
   `;
@@ -1067,10 +1171,11 @@ function renderEntriesWidget(data, entry = {}) {
   return `${renderEndpointRouteMap(items)}${renderNetworkHealthDiagram(items)}<div class="latency-bars">${rows}</div>${showChart ? `<div class="chart-shell">${latencyChartMarkup(items)}</div>` : ""}`;
 }
 
-function renderOnlinePlayers(local, activity) {
+function renderOnlinePlayers(local, activity, fakeNames = new Set()) {
   const sample = local?.sample || [];
   const fallback = activity?.since_start?.currently_online_names || [];
-  const names = sample.length ? sample.map((entry) => entry.name) : fallback;
+  const names = (sample.length ? sample.map((entry) => entry.name) : fallback)
+    .filter((name) => !fakeNames.has(String(name).toLowerCase()));
   if (!names.length) return `<div class="empty-state player-empty"><b>无人在线</b><span>当前 0 人</span></div>`;
   return names
     .map((name) => `
@@ -1083,19 +1188,26 @@ function renderOnlinePlayers(local, activity) {
 }
 
 function renderHistory(activity) {
-  const recent = activity?.recent_joins || [];
-  if (!recent.length) return `<div class="empty-state player-empty"><b>暂无上线记录</b><span>本次启动后还没有玩家进服</span></div>`;
-  const firstThree = recent.slice(0, 3).map(historyItemMarkup).join("");
-  const more = recent.slice(3).map(historyItemMarkup).join("");
-  return `
-    <div class="history-list">${firstThree}</div>
-    ${more ? `<details class="history-more"><summary>展开更多记录 (${recent.length - 3})</summary><div class="history-list">${more}</div></details>` : ""}
-  `;
+  const players = activity?.last_24h?.players || [];
+  if (!players.length) return `<div class="empty-state player-empty"><b>24 小时内无人上线</b><span>有人进服后这里会自动列出名字和时长</span></div>`;
+  return `<div class="history-list history-list-24h">${players.map(historyItemMarkup).join("")}</div>`;
 }
 
-function historyItemMarkup(event) {
-  const timeText = String(event.line || "").replace(/^\[/, "").split("]")[0];
-  return `<div class="history-item"><span>${escapeHTML(timeText)}</span><b>${escapeHTML(event.name)}</b></div>`;
+function historyItemMarkup(player) {
+  const timeText = player.last_join_time || "--";
+  const sessionText = formatPlayerMinutes(player.session_minutes_24h);
+  const totalText = formatPlayerHours(player.play_hours);
+  const joinText = `加入 ${Number(player.join_events || 0)} 次`;
+  return `
+    <div class="history-item history-player ${player.online ? "online" : ""}">
+      <span>${escapeHTML(timeText)}</span>
+      <div>
+        <b>${escapeHTML(player.name)}</b>
+        <small>游玩 ${escapeHTML(sessionText)} · 累计 ${escapeHTML(totalText)} · ${escapeHTML(joinText)}</small>
+      </div>
+      ${player.online ? `<em>在线</em>` : ""}
+    </div>
+  `;
 }
 
 function playerStatPill(label, value, detail) {
@@ -1105,11 +1217,17 @@ function playerStatPill(label, value, detail) {
 function renderPlayersWidget(data) {
   const local = localStatus(data);
   const activity = data.stats?.activity || {};
-  const today = activity.today || {};
+  const last24h = activity.last_24h || {};
   const sinceStart = activity.since_start || {};
-  const onlineCount = Number.isFinite(Number(local.online)) ? Number(local.online) : (sinceStart.currently_online_names || []).length;
+  const fake = data.stats?.players?.fake || {};
+  const fakeNames = fakeNameSet(data);
+  const fakeActive = Number(fake.active || 0);
+  const onlineCount = Number.isFinite(Number(local.online))
+    ? Math.max(0, Number(local.online) - fakeActive)
+    : (sinceStart.currently_online_names || []).filter((name) => !fakeNames.has(String(name).toLowerCase())).length;
   const maxPlayers = Number.isFinite(Number(local.max)) ? Number(local.max) : "--";
-  const recentCount = activity.recent_joins?.length || 0;
+  const last24hPlayers = last24h.players || [];
+  const activeMinutes = last24hMinutes(activity);
   return `
     <div class="player-widget-grid">
       <section class="player-panel live-panel">
@@ -1117,31 +1235,32 @@ function renderPlayersWidget(data) {
           <span>当前在线</span>
           <b>${escapeHTML(`${onlineCount}/${maxPlayers}`)}</b>
         </div>
-        <div class="person-list">${renderOnlinePlayers(local, activity)}</div>
+        <div class="person-list">${renderOnlinePlayers(local, activity, fakeNames)}</div>
       </section>
       <section class="player-panel history-panel">
         <div class="player-panel-head">
-          <span>上线历史</span>
-          <b>最近 ${Math.min(3, recentCount)} / ${recentCount}</b>
+          <span>过去 24 小时上线</span>
+          <b>${escapeHTML(`${last24hPlayers.length} 人`)}</b>
         </div>
         ${renderHistory(activity)}
       </section>
     </div>
     <div class="player-stat-strip">
-      ${playerStatPill("今日上线", today.unique_joined || 0, `${today.join_events || 0} 次加入`)}
-      ${playerStatPill("本次启动", sinceStart.unique_joined || 0, `${sinceStart.join_events || 0} 次加入`)}
+      ${playerStatPill("上线人数", last24h.unique_joined || 0, "过去24小时 · 不含假人")}
+      ${playerStatPill("加入次数", last24h.join_events || 0, "过去24小时 · 不含假人")}
+      ${playerStatPill("游玩时长", formatPlayerMinutes(activeMinutes), "过去24小时 · 不含假人")}
     </div>
   `;
 }
 
 function renderTotalsWidget(data) {
   const totals = data.stats?.players?.totals || {};
+  const fake = data.stats?.players?.fake || {};
   return `
     <div class="mini-grid dense">
-      ${metricCard("已知玩家", totals.known_players, "usercache")}
-      ${metricCard("统计档案", totals.stat_players, `${totals.unique_stat_players || totals.stat_players || 0} 名玩家`)}
-      ${metricCard("总游玩", `${totals.play_hours || 0}h`, "累计")}
-      ${metricCard("总移动", `${totals.distance_km || 0}km`, "含飞行/船/马")}
+      ${metricCard("玩家总游玩", `${totals.play_hours || 0}h`, "不含假人")}
+      ${metricCard("玩家总移动", `${totals.distance_km || 0}km`, "不含假人")}
+      ${metricCard("当前假人", fake.active || 0, "正在运行")}
       ${metricCard("总死亡", totals.deaths || 0, "历史")}
       ${metricCard("怪物击杀", totals.mob_kills || 0, "累计")}
       ${metricCard("玩家击杀", totals.player_kills || 0, "累计")}
@@ -1192,6 +1311,7 @@ function renderAchievementsWidget(data) {
   const players = data.stats?.players || {};
   const totals = players.totals || {};
   const boards = players.leaderboards || {};
+  const activity = data.stats?.activity || {};
   return `
     <div class="badge-grid">
       ${badge("长线世界", `${totals.play_hours || 0}h`, "全服累计游玩")}
@@ -1199,7 +1319,7 @@ function renderAchievementsWidget(data) {
       ${badge("地下工程", compactNumber(totals.blocks_mined), "累计挖掘方块")}
       ${badge("怪物猎场", compactNumber(totals.mob_kills), "累计怪物击杀")}
       ${badge("进度收藏", compactNumber(totals.advancements), "累计完成进度")}
-      ${badge("今日火种", data.stats?.activity?.today?.unique_joined || 0, "今日进服人数")}
+      ${badge("24小时火种", activity.last_24h?.unique_joined || 0, "过去 24 小时玩家进服")}
       ${badge("本季肝帝", firstName(boards.playtime), "游玩时间第一")}
       ${badge("最远旅人", firstName(boards.distance), "移动距离第一")}
     </div>
@@ -1218,8 +1338,8 @@ function renderResourcesWidget(data) {
       ${metricCard("内存", java.rss_mb ? `${java.rss_mb}MB` : "--", javaMemoryDetail(data, java))}
       ${metricCard("系统压力", formatPercent(loadPressure), `${load.join(" / ") || "--"} · ${cores} 核`)}
       ${metricCard("连接", data.stats?.connections?.established ?? "--", "TCP established")}
-      ${metricCard("Java PID", java.pid || "--", java.etime ? `运行 ${java.etime}` : "")}
-      ${metricCard("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${tunnel.etime}` : "")}
+      ${metricCard("Java PID", java.pid || "--", java.etime ? `运行 ${formatEtime(java.etime)}` : "")}
+      ${metricCard("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${formatEtime(tunnel.etime)}` : "")}
     </div>
   `;
 }
@@ -1379,12 +1499,32 @@ function renderSessionsWidget(data) {
 }
 
 function renderLogsWidget() {
+  const logState = logScrollState();
+  const held = !logState.pinned;
+  const historyText = state.logLoadingOlder
+    ? "正在接上更早日志..."
+    : state.logHistoryError
+      ? state.logHistoryError
+      : state.logHasMore[state.logTarget]
+        ? "上滑到顶部自动加载更早日志"
+        : "已经到最早日志";
   return `
-    <div class="tabs" role="tablist">
-      <button class="tab ${state.logTarget === "server" ? "active" : ""}" data-log="server" type="button">JE</button>
-      <button class="tab ${state.logTarget === "tunnel" ? "active" : ""}" data-log="tunnel" type="button">隧道</button>
+    <div class="log-toolbar">
+      <div class="tabs" role="tablist">
+        <button class="tab ${state.logTarget === "server" ? "active" : ""}" data-log="server" type="button">JE</button>
+        <button class="tab ${state.logTarget === "tunnel" ? "active" : ""}" data-log="tunnel" type="button">隧道</button>
+      </div>
+      <span class="log-history-meta ${state.logLoadingOlder ? "loading" : ""}">${escapeHTML(historyText)}</span>
     </div>
-    <pre id="logBox" class="log-box">${escapeHTML(state.latestLogs || "")}</pre>
+    <div class="log-frame ${held ? "is-held" : ""}">
+      <pre id="logBox" class="log-box" data-log-target="${escapeHTML(state.logTarget)}">${renderLogText(state.latestLogs || "")}</pre>
+      ${held ? `
+        <button class="log-latest-hint" data-log-latest type="button" title="回到最新日志">
+          <i aria-hidden="true">↓</i>
+          <span>不在最新</span>
+        </button>
+      ` : ""}
+    </div>
   `;
 }
 
@@ -1560,7 +1700,7 @@ function renderStatusOverview(data) {
       ${renderFactGrid([
         renderFact("玩家", local.ok ? `${local.online}/${local.max}` : "--/--", local.version || "Purpur"),
         renderFact("难度", props.difficulty || "--", `模式 ${props.gamemode || "--"}`),
-        renderFact("运行", java.etime || "--", "JE uptime"),
+        renderFact("运行", formatEtime(java.etime), "JE 运行时长", "fact-wide"),
         renderFact("隧道", tunnelRunning ? "已连接" : "未连接", data.sessions?.["unmc-tunnel"] || "screen"),
         renderFact("存档写入", world.level_dat_mtime?.slice(11) || "--", "level.dat"),
         renderFact("TCP", data.stats?.connections?.established ?? "--", "established"),
@@ -1578,14 +1718,14 @@ function renderRuntimeOverview(data) {
   const memoryPercent = javaMemoryPercent(data, java);
   return `
     <div class="meter-list clean-meters">
-      ${barMeter("Java CPU", formatPercent(java.cpu_percent), "当前采样", java.cpu_percent, "teal")}
-      ${barMeter("Java 内存", java.rss_mb ? `${java.rss_mb}MB` : "--", javaMemoryDetail(data, java), memoryPercent, "blue")}
+      ${barMeter("Java CPU", formatPercent(java.cpu_percent), "", java.cpu_percent, "teal")}
+      ${barMeter("Java 内存", javaMemoryMeterValue(data, java), "", memoryPercent, "blue", javaMemoryMeterSubtext(data))}
       ${renderLoadPressure(load, cores)}
     </div>
     ${renderFactGrid([
       renderFact("Java PID", java.pid || "--", "purpur"),
-      renderFact("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${tunnel.etime}` : "ssh"),
-      renderFact("面板 PID", panel.pid || "--", panel.etime ? `运行 ${panel.etime}` : "panel"),
+      renderFact("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${formatEtime(tunnel.etime)}` : "ssh"),
+      renderFact("面板 PID", panel.pid || "--", panel.etime ? `运行 ${formatEtime(panel.etime)}` : "panel"),
     ], "process-facts")}
   `;
 }
@@ -1815,13 +1955,14 @@ function renderNetworkOverview(data) {
 function renderPlayerTotalsStrip(data) {
   const totals = data.stats?.players?.totals || {};
   const activity = data.stats?.activity || {};
+  const last24h = activity.last_24h || {};
+  const fake = data.stats?.players?.fake || {};
   return renderFactGrid([
-    renderFact("已知玩家", totals.known_players || 0, "usercache"),
-    renderFact("统计档案", totals.stat_players || 0, `${totals.unique_stat_players || 0} 名玩家`),
-    renderFact("总游玩", `${totals.play_hours || 0}h`, "累计"),
-    renderFact("总移动", `${totals.distance_km || 0}km`, "含飞行/船/马"),
-    renderFact("今日上线", activity.today?.unique_joined || 0, `${activity.today?.join_events || 0} 次加入`),
-    renderFact("本次启动", activity.since_start?.unique_joined || 0, `${activity.since_start?.join_events || 0} 次加入`),
+    renderFact("玩家总游玩", `${totals.play_hours || 0}h`, "不含假人"),
+    renderFact("玩家总移动", `${totals.distance_km || 0}km`, "不含假人"),
+    renderFact("当前假人", fake.active || 0, "正在运行"),
+    renderFact("上线人数", last24h.unique_joined || 0, "24h · 不含假人"),
+    renderFact("加入次数", last24h.join_events || 0, "24h · 不含假人"),
   ], "player-summary-facts");
 }
 
@@ -1837,16 +1978,18 @@ function renderConfigSummary(data) {
   ], "config-summary-facts");
 }
 
-function barMeter(label, value, detail, percent, tone = "") {
+function barMeter(label, value, detail, percent, tone = "", subtext = "") {
   const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+  const hasDetail = Boolean(detail);
   return `
-    <div class="meter-row ${tone}">
+    <div class="meter-row ${tone} ${hasDetail ? "" : "no-detail"}">
       <div>
         <span>${escapeHTML(label)}</span>
         <b>${escapeHTML(value ?? "--")}</b>
+        ${subtext ? `<small class="meter-subtext">${escapeHTML(subtext)}</small>` : ""}
       </div>
       <i><em style="width:${safePercent}%"></em></i>
-      <small>${escapeHTML(detail || "")}</small>
+      ${hasDetail ? `<small>${escapeHTML(detail)}</small>` : ""}
     </div>
   `;
 }
@@ -1860,14 +2003,14 @@ function renderRuntimePanel(data) {
   const memoryPercent = javaMemoryPercent(data, java);
   return `
     <div class="meter-list">
-      ${barMeter("Java CPU", formatPercent(java.cpu_percent), "当前采样", java.cpu_percent, "teal")}
-      ${barMeter("Java 内存", java.rss_mb ? `${java.rss_mb}MB` : "--", javaMemoryDetail(data, java), memoryPercent, "blue")}
+      ${barMeter("Java CPU", formatPercent(java.cpu_percent), "", java.cpu_percent, "teal")}
+      ${barMeter("Java 内存", javaMemoryMeterValue(data, java), "", memoryPercent, "blue", javaMemoryMeterSubtext(data))}
       ${renderLoadPressure(load, cores)}
     </div>
     <div class="mini-grid dense">
       ${metricCard("Java PID", java.pid || "--", "purpur")}
-      ${metricCard("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${tunnel.etime}` : "ssh")}
-      ${metricCard("面板 PID", panel.pid || "--", panel.etime ? `运行 ${panel.etime}` : "panel")}
+      ${metricCard("隧道 PID", tunnel.pid || "--", tunnel.etime ? `运行 ${formatEtime(tunnel.etime)}` : "ssh")}
+      ${metricCard("面板 PID", panel.pid || "--", panel.etime ? `运行 ${formatEtime(panel.etime)}` : "panel")}
       ${metricCard("TCP 连接", data.stats?.connections?.established ?? "--", "established")}
     </div>
   `;
@@ -2141,7 +2284,7 @@ function renderDashboard(options = {}) {
   if (editButton) editButton.textContent = "编辑布局";
   const editStrip = $("#editStrip");
   if (editStrip) editStrip.hidden = true;
-  keepLogAtBottom();
+  syncLogScrollAfterRender();
   if (state.confirmation) window.requestAnimationFrame(focusConfirmDialog);
   if (!hadContent || Date.now() < initialScrollDeadline) {
     window.requestAnimationFrame(resetInitialScroll);
@@ -2258,9 +2401,81 @@ function renderAllPreservingScroll(options = {}) {
   window.requestAnimationFrame(restore);
 }
 
-function keepLogAtBottom() {
+function logScrollState(target = state.logTarget) {
+  if (!state.logScroll[target]) state.logScroll[target] = { pinned: true, top: 0 };
+  return state.logScroll[target];
+}
+
+function logDistanceFromBottom(box) {
+  return box.scrollHeight - box.clientHeight - box.scrollTop;
+}
+
+function logPinnedToBottom(box) {
+  return logDistanceFromBottom(box) <= LOG_BOTTOM_THRESHOLD;
+}
+
+function logLatestHintMarkup() {
+  return `
+    <button class="log-latest-hint" data-log-latest type="button" title="回到最新日志">
+      <i aria-hidden="true">↓</i>
+      <span>不在最新</span>
+    </button>
+  `;
+}
+
+function syncLogHint(box = $("#logBox")) {
+  if (!box) return;
+  const frame = box.closest(".log-frame");
+  if (!frame) return;
+  const held = !logScrollState(box.dataset.logTarget || state.logTarget).pinned;
+  frame.classList.toggle("is-held", held);
+  const hint = frame.querySelector("[data-log-latest]");
+  if (held && !hint) frame.insertAdjacentHTML("beforeend", logLatestHintMarkup());
+  if (!held && hint) hint.remove();
+}
+
+function captureCurrentLogScroll(box = $("#logBox")) {
+  if (!box || restoringLogScroll) return;
+  const current = logScrollState(box.dataset.logTarget || state.logTarget);
+  current.top = box.scrollTop;
+  current.pinned = logPinnedToBottom(box);
+  syncLogHint(box);
+  if (!current.pinned && box.scrollTop <= LOG_TOP_THRESHOLD) {
+    scheduleLoadOlderLogs();
+  }
+}
+
+function syncLogScrollAfterRender(options = {}) {
   const box = $("#logBox");
-  if (box) box.scrollTop = box.scrollHeight;
+  if (!box) return;
+  const current = logScrollState(box.dataset.logTarget || state.logTarget);
+  restoringLogScroll = true;
+  if (options.forceBottom || current.pinned) {
+    box.scrollTop = box.scrollHeight;
+    current.pinned = true;
+    current.top = box.scrollTop;
+  } else {
+    const maxTop = Math.max(0, box.scrollHeight - box.clientHeight);
+    box.scrollTop = Math.min(current.top, maxTop);
+  }
+  syncLogHint(box);
+  window.requestAnimationFrame(() => {
+    restoringLogScroll = false;
+    captureCurrentLogScroll(box);
+  });
+}
+
+function jumpLogToLatest() {
+  const current = logScrollState();
+  current.pinned = true;
+  current.top = 0;
+  syncLogScrollAfterRender({ forceBottom: true });
+}
+
+function scheduleLoadOlderLogs() {
+  if (state.logLoadingOlder || !state.logHasMore[state.logTarget]) return;
+  window.clearTimeout(logOlderLoadTimer);
+  logOlderLoadTimer = window.setTimeout(loadOlderLogs, 80);
 }
 
 function captureScrollAnchor() {
@@ -2406,7 +2621,7 @@ function applyDisplayMasonry() {
   const height = Math.max(...columnHeights, 320) - gap;
   dashboard.style.height = `${Math.max(320, height)}px`;
   dashboard.classList.add("is-arranged");
-  keepLogAtBottom();
+  syncLogScrollAfterRender();
 }
 
 function scheduleDisplayMasonry() {
@@ -2622,9 +2837,67 @@ function scheduleBackupProgressRefresh(data = state.latestData) {
   }, BACKUP_REFRESH_MS);
 }
 
-async function refreshLogs() {
-  const data = await getJson(`/api/logs?target=${encodeURIComponent(state.logTarget)}&lines=260`);
+async function refreshLogs(options = {}) {
+  const target = state.logTarget;
+  const current = logScrollState(target);
+  if (!options.force && !current.pinned && state.latestLogs) return;
+  const data = await getJson(`/api/logs?target=${encodeURIComponent(target)}&lines=${LOG_CHUNK_LINES}`);
+  if (target !== state.logTarget) return;
   state.latestLogs = data.text || "";
+  state.logCursor[target] = data.cursor || "";
+  state.logHasMore[target] = Boolean(data.has_more);
+  state.logStartDate[target] = data.start_date || "";
+  state.logLoadingOlder = false;
+  state.logHistoryError = "";
+}
+
+async function loadOlderLogs() {
+  const target = state.logTarget;
+  const cursor = state.logCursor[target];
+  const box = $("#logBox");
+  if (!box || state.logLoadingOlder || !state.logHasMore[target] || !cursor) return;
+
+  const previousHeight = box.scrollHeight;
+  const previousTop = box.scrollTop;
+  state.logLoadingOlder = true;
+  state.logHistoryError = "";
+  renderAll({ silent: true });
+
+  try {
+    const data = await getJson(`/api/logs?target=${encodeURIComponent(target)}&lines=${LOG_CHUNK_LINES}&cursor=${encodeURIComponent(cursor)}`);
+    if (target !== state.logTarget) return;
+    const olderText = data.text || "";
+    if (olderText) {
+      const currentLogs = data.end_date === state.logStartDate[target]
+        ? stripLeadingLogDateDivider(state.latestLogs, state.logStartDate[target])
+        : state.latestLogs;
+      state.latestLogs = `${olderText}${currentLogs ? "\n" : ""}${currentLogs}`;
+    }
+    state.logCursor[target] = data.cursor || "";
+    state.logHasMore[target] = Boolean(data.has_more);
+    state.logStartDate[target] = data.start_date || state.logStartDate[target] || "";
+    state.logLoadingOlder = false;
+    renderAll({ silent: true });
+    window.requestAnimationFrame(() => {
+      const nextBox = $("#logBox");
+      if (!nextBox) return;
+      restoringLogScroll = true;
+      const delta = nextBox.scrollHeight - previousHeight;
+      nextBox.scrollTop = previousTop + delta;
+      const current = logScrollState(target);
+      current.pinned = false;
+      current.top = nextBox.scrollTop;
+      syncLogHint(nextBox);
+      window.requestAnimationFrame(() => {
+        restoringLogScroll = false;
+        captureCurrentLogScroll(nextBox);
+      });
+    });
+  } catch (error) {
+    state.logLoadingOlder = false;
+    state.logHistoryError = `加载更早日志失败：${error.message}`;
+    renderAll({ silent: true });
+  }
 }
 
 async function refreshAll(options = {}) {
@@ -2712,6 +2985,10 @@ document.addEventListener("pointerdown", (event) => {
   if (!event.target.closest("#refreshBtn, [data-refresh]")) return;
   pendingRefreshAnchor = captureScrollAnchor();
   pendingRefreshTop = window.scrollY;
+}, true);
+
+document.addEventListener("scroll", (event) => {
+  if (event.target?.id === "logBox") captureCurrentLogScroll(event.target);
 }, true);
 
 document.addEventListener("click", (event) => {
@@ -2825,8 +3102,18 @@ document.addEventListener("click", (event) => {
 
   const logButton = event.target.closest("[data-log]");
   if (logButton) {
+    captureCurrentLogScroll();
     state.logTarget = logButton.dataset.log;
-    refreshLogs().then(renderAll);
+    state.latestLogs = "";
+    state.logLoadingOlder = false;
+    state.logHistoryError = "";
+    logScrollState(state.logTarget).pinned = true;
+    refreshLogs({ force: true }).then(renderAll);
+    return;
+  }
+
+  if (event.target.closest("[data-log-latest]")) {
+    jumpLogToLatest();
     return;
   }
 
