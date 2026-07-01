@@ -31,6 +31,9 @@ const state = {
   latestData: null,
   latestLogs: "",
   activeView: "overview",
+  consoleCommand: "",
+  consoleComposing: false,
+  pendingConsoleRender: false,
   logScroll: {
     server: { pinned: true, top: 0 },
     tunnel: { pinned: true, top: 0 },
@@ -1229,26 +1232,28 @@ function renderPlayersWidget(data) {
   const last24hPlayers = last24h.players || [];
   const activeMinutes = last24hMinutes(activity);
   return `
-    <div class="player-widget-grid">
-      <section class="player-panel live-panel">
-        <div class="player-panel-head">
-          <span>当前在线</span>
-          <b>${escapeHTML(`${onlineCount}/${maxPlayers}`)}</b>
-        </div>
-        <div class="person-list">${renderOnlinePlayers(local, activity, fakeNames)}</div>
-      </section>
-      <section class="player-panel history-panel">
-        <div class="player-panel-head">
-          <span>过去 24 小时上线</span>
-          <b>${escapeHTML(`${last24hPlayers.length} 人`)}</b>
-        </div>
-        ${renderHistory(activity)}
-      </section>
-    </div>
-    <div class="player-stat-strip">
-      ${playerStatPill("上线人数", last24h.unique_joined || 0, "过去24小时 · 不含假人")}
-      ${playerStatPill("加入次数", last24h.join_events || 0, "过去24小时 · 不含假人")}
-      ${playerStatPill("游玩时长", formatPlayerMinutes(activeMinutes), "过去24小时 · 不含假人")}
+    <div class="player-overview-frame">
+      <div class="player-widget-grid">
+        <section class="player-panel live-panel">
+          <div class="player-panel-head">
+            <span>当前在线</span>
+            <b>${escapeHTML(`${onlineCount}/${maxPlayers}`)}</b>
+          </div>
+          <div class="person-list">${renderOnlinePlayers(local, activity, fakeNames)}</div>
+        </section>
+        <section class="player-panel history-panel">
+          <div class="player-panel-head">
+            <span>过去 24 小时上线</span>
+            <b>${escapeHTML(`${last24hPlayers.length} 人`)}</b>
+          </div>
+          ${renderHistory(activity)}
+        </section>
+      </div>
+      <div class="player-stat-strip">
+        ${playerStatPill("上线人数", last24h.unique_joined || 0, "过去24小时 · 不含假人")}
+        ${playerStatPill("加入次数", last24h.join_events || 0, "过去24小时 · 不含假人")}
+        ${playerStatPill("游玩时长", formatPlayerMinutes(activeMinutes), "过去24小时 · 不含假人")}
+      </div>
     </div>
   `;
 }
@@ -1539,7 +1544,7 @@ function renderControlsWidget() {
       <button data-action="stop_server" class="danger" type="button" ${state.busy ? "disabled" : ""}>停 JE</button>
     </div>
     <form id="consoleForm" class="console-form">
-      <input id="consoleCommand" autocomplete="off" placeholder="Minecraft 控制台命令" ${state.busy ? "disabled" : ""}>
+      <input id="consoleCommand" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Minecraft 控制台命令" value="${escapeHTML(state.consoleCommand)}" ${state.busy ? "disabled" : ""}>
       <button type="submit" ${state.busy ? "disabled" : ""}>发送</button>
     </form>
     <div id="commandFeedback" class="command-feedback ${state.feedback.kind}" aria-live="polite">
@@ -2117,8 +2122,8 @@ function renderPlayersSection(data) {
     "玩家数据",
     `
       <div class="calm-grid calm-grid-two">
-        ${renderCalmCard("在线与历史", "玩家", playerBody, "span-6")}
-        ${renderCalmCard("全服概览", "统计", totalsBody, "span-6")}
+        ${renderCalmCard("在线与历史", "玩家", playerBody, "span-6 player-card-overview")}
+        ${renderCalmCard("全服概览", "统计", totalsBody, "span-6 player-card-totals")}
         ${renderCalmCard("排行榜", "榜单", leaderboardBody, "span-12")}
         ${renderCalmCard("成就墙", "高光", badgesBody, "span-4")}
         ${renderCalmCard("物品热点", "世界", itemsBody, "span-4")}
@@ -2268,6 +2273,7 @@ function renderDashboard(options = {}) {
   const previousScroll = Number.isFinite(options.fallbackTop) ? options.fallbackTop : window.scrollY;
   const previousAnchor = options.scrollAnchor || captureScrollAnchor();
   const previousHeight = dashboard.offsetHeight;
+  const consoleFocus = captureConsoleFocus();
   if (silent) {
     window.clearTimeout(silentRenderTimer);
     dashboard.classList.add("is-silent-render");
@@ -2285,6 +2291,7 @@ function renderDashboard(options = {}) {
   const editStrip = $("#editStrip");
   if (editStrip) editStrip.hidden = true;
   syncLogScrollAfterRender();
+  restoreConsoleFocus(consoleFocus);
   if (state.confirmation) window.requestAnimationFrame(focusConfirmDialog);
   if (!hadContent || Date.now() < initialScrollDeadline) {
     window.requestAnimationFrame(resetInitialScroll);
@@ -2384,6 +2391,52 @@ function renderLibrary() {
     .join("");
   $("#libraryList").innerHTML = nodes;
   $("#libraryCount").textContent = `${Object.keys(WIDGETS).length} 个组件`;
+}
+
+function consoleInputNode() {
+  return $("#consoleCommand");
+}
+
+function consoleInputActive() {
+  const input = consoleInputNode();
+  return Boolean(input && document.activeElement === input);
+}
+
+function shouldHoldConsoleRender() {
+  return state.consoleComposing || consoleInputActive();
+}
+
+function captureConsoleFocus() {
+  const input = consoleInputNode();
+  if (!input) return null;
+  state.consoleCommand = input.value;
+  if (document.activeElement !== input) return null;
+  return {
+    focused: true,
+    selectionStart: input.selectionStart,
+    selectionEnd: input.selectionEnd,
+  };
+}
+
+function restoreConsoleFocus(snapshot) {
+  if (!snapshot?.focused) return;
+  const input = consoleInputNode();
+  if (!input) return;
+  input.focus({ preventScroll: true });
+  const length = input.value.length;
+  const start = Math.min(snapshot.selectionStart ?? length, length);
+  const end = Math.min(snapshot.selectionEnd ?? start, length);
+  try {
+    input.setSelectionRange(start, end);
+  } catch {
+    // Some browser/input states reject selection updates; keeping focus is enough.
+  }
+}
+
+function flushPendingConsoleRender() {
+  if (!state.pendingConsoleRender || shouldHoldConsoleRender()) return;
+  state.pendingConsoleRender = false;
+  renderAllPreservingScroll({ silent: true });
 }
 
 function renderAll(options = {}) {
@@ -2920,6 +2973,19 @@ async function refreshAll(options = {}) {
         ? captureScrollAnchor()
         : options.scrollAnchor;
     const fallbackTop = firstDataRender ? 0 : userMovedAfterManualRefresh ? window.scrollY : options.fallbackTop;
+    if (shouldHoldConsoleRender()) {
+      state.pendingConsoleRender = true;
+      scheduleBackupProgressRefresh(state.latestData);
+      if (visual) {
+        window.clearTimeout(refreshVisualTimer);
+        window.setTimeout(() => {
+          document.body.classList.remove("refreshing");
+        }, 420);
+      } else {
+        document.body.classList.remove("refreshing");
+      }
+      return;
+    }
     renderAll({
       silent: true,
       scrollAnchor,
@@ -2976,9 +3042,35 @@ async function runAction(payload) {
 }
 
 document.addEventListener("keydown", (event) => {
+  if (event.target?.matches?.("#consoleCommand") && event.key === "Enter" && (event.isComposing || state.consoleComposing)) {
+    event.preventDefault();
+    return;
+  }
   if (!state.confirmation || event.key !== "Escape") return;
   event.preventDefault();
   clearConfirmation();
+});
+
+document.addEventListener("input", (event) => {
+  if (!event.target?.matches?.("#consoleCommand")) return;
+  state.consoleCommand = event.target.value;
+});
+
+document.addEventListener("compositionstart", (event) => {
+  if (!event.target?.matches?.("#consoleCommand")) return;
+  state.consoleComposing = true;
+});
+
+document.addEventListener("compositionend", (event) => {
+  if (!event.target?.matches?.("#consoleCommand")) return;
+  state.consoleComposing = false;
+  state.consoleCommand = event.target.value;
+});
+
+document.addEventListener("focusout", (event) => {
+  if (!event.target?.matches?.("#consoleCommand")) return;
+  state.consoleCommand = event.target.value;
+  window.setTimeout(flushPendingConsoleRender, 0);
 });
 
 document.addEventListener("pointerdown", (event) => {
@@ -3152,9 +3244,12 @@ document.addEventListener("submit", (event) => {
   }
   if (!event.target.matches("#consoleForm")) return;
   event.preventDefault();
+  if (state.consoleComposing) return;
   const input = $("#consoleCommand");
   const command = input.value.trim();
   if (!command) return;
+  state.consoleCommand = "";
+  state.pendingConsoleRender = false;
   input.value = "";
   runAction({ action: "console", command });
 });

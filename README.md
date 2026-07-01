@@ -24,6 +24,7 @@ It includes:
 - SSH reverse tunnel scripts for exposing a local Minecraft port through a public relay server.
 - The same local web panel UI currently running on the UNMC Mac mini, including the UN logo, glass layout, status pages, logs, commands, player data, plugin toggles, server.properties editing, and local world backups.
 - Optional accelerator templates for additional regional entry points.
+- Optional Skript template for broadcasting which public entry a player joined through.
 - Beginner-friendly install scripts and examples.
 
 It does **not** include:
@@ -271,6 +272,7 @@ See:
 
 ```text
 templates/nginx-stream-regional-relay.example.conf
+templates/skript/la_proxy_broadcast.sk.example
 ```
 
 This is useful when players in some regions get better routing through an acceleration server, even though the final Minecraft server still runs on the Mac mini.
@@ -458,6 +460,7 @@ GPL-3.0. See [LICENSE](LICENSE).
 - 自动备份。
 - 日志、控制台命令、玩家状态、插件开关、server.properties 图形化修改。
 - 可选地区加速入口的配置模板。
+- 可选 Skript 模板，用于在玩家进服时提示他通过哪个公网入口加入。
 - 尽量傻瓜的快速安装脚本。
 
 这个项目不包含：

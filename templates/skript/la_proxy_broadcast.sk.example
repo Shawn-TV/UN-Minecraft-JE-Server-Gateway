@@ -1,0 +1,25 @@
+# plugins/Skript/scripts/la_proxy_broadcast.sk
+#
+# JE 现在跑在 Mac mini 上，玩家连接经过北京 SSH 反向隧道后，
+# 服务端看到的来源 IP 会变成 127.0.0.1，不能再靠 IP 区分入口。
+# Minecraft 握手里会带玩家填写的域名，所以这里改用 hostname 判断。
+# hostname 只能在 connect 阶段读取；提示要等 join 后再发，不然刚进来的玩家看不到。
+#
+# 这是 UNMC 当前域名示例。自己部署时，把下面的 host 判断改成你的
+# play.yourdomain.com / acceleration.yourdomain.com / SRV 目标域名。
+
+on connect:
+  set {unmc::join-host::%uuid of player%} to host name
+
+on join:
+  wait 1 second
+  set {_host} to {unmc::join-host::%uuid of player%}
+  delete {unmc::join-host::%uuid of player%}
+  if {_host} contains "losangeles.playje.unmcserver.com":
+    broadcast "&7[中转]&a %player% &7正在通过 &b洛杉矶节点 &7连接服务器"
+  else if {_host} contains "la.playje.unmcserver.com":
+    broadcast "&7[中转]&a %player% &7正在通过 &b洛杉矶节点 &7连接服务器"
+  else if {_host} contains "playje.unmcserver.com":
+    broadcast "&7[中转]&a %player% &7正在通过 &b北京节点 &7连接服务器"
+  else:
+    broadcast "&7[中转]&a %player% &7正在通过公网入口连接服务器"
